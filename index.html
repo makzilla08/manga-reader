@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — บล็อกโฆษณา</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v10 กัน crash</small></h2>
+<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v11 ข้ามตอนติด LC</small></h2>
 <div>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
@@ -103,6 +103,7 @@ function renderAL(media,hasNext){
   }
   if(hasNext){const b=document.createElement('button');b.textContent='⬇ โหลดเพิ่ม (อีก 50 เรื่อง)';b.style.cssText='margin:12px;padding:12px;font-size:15px';b.onclick=loadMore;el.appendChild(b)}
 }
+function readable(c){const a=c.attributes||{};return !a.externalUrl&&(a.pages===undefined||a.pages>0)}
 async function readNow(t){
   // คลิกเดียวอ่านในเว็บ: โชว์แผงก่อน แล้วเปิดตอนล่าสุดทันทีที่หาไฟล์เจอ
   status('กำลังเปิด "'+t+'" ...');
@@ -112,8 +113,9 @@ async function readNow(t){
     const d=await j(url);
     if(!d.data||!d.data.length)throw new Error('no data');
     const id=d.data[0].id;
-    const f=await j(`${API}/manga/${id}/feed?limit=20&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
-    if(!f.data||!f.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>ไม่มีตอนอ่านฟรีบน MangaDx</p>`+thLinks(t);status('ไม่มีตอนฟรี — ใช้ลิงก์เว็บไทย');return}
+    const rawF=await j(`${API}/manga/${id}/feed?limit=20&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
+    const f={data:(rawF.data||[]).filter(readable),total:rawF.total};
+    if(!f.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>เรื่องนี้ติดลิขสิทธิ์บน MangaDx (เช่น Solo Leveling → WebNovel) ไม่มีภาพฟรี — ใช้ปุ่มเว็บไทยด้านล่าง</p>`+thLinks(t);status('ติดลิขสิทธิ์ — ใช้ลิงก์เว็บไทย');return}
     window._feed=f.data;window._title=t;
     openChapter(0);
     // สารบัญไว้เปลี่ยนตอนด้านล่าง
@@ -157,21 +159,28 @@ function thLinks(t){
 async function loadChapters(id,t){
   try{
     status('กำลังโหลดสารบัญ...');
-    const d=await j(`${API}/manga/${id}/feed?limit=100&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
-    if(!d.data||!d.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>ไม่มีตอนภาษาที่อ่านได้บน MangaDx</p>`+thLinks(t);status('ไม่มีตอนให้อ่านบน MangaDx — ใช้ลิงก์เว็บไทย');return}
+    const rd=await j(`${API}/manga/${id}/feed?limit=100&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
+    const d={data:(rd.data||[]).filter(readable),total:rd.total};
+    if(!d.data||!d.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>เรื่องนี้ติดลิขสิทธิ์บน MangaDx ไม่มีภาพฟรี</p>`+thLinks(t);status('ไม่มีตอนให้อ่านบน MangaDx — ใช้ลิงก์เว็บไทย');return}
     $('chapters').innerHTML=`<h3>${t} — ${d.total} chapters (แสดง ${d.data.length})</h3>`+thLinks(t)+d.data.map(c=>`<button data-ch="${c.id}">Ch.${c.attributes.chapter||'?'} ${c.attributes.title||''} [${c.attributes.translatedLanguage}]</button>`).join('');
     $('chapters').querySelectorAll('button[data-ch]').forEach(b=>b.onclick=()=>read(b.dataset.ch));
     status('กดปุ่มตอนเพื่ออ่าน (ไม่มีโฆษณา)');
     window.scrollTo(0,0);
   }catch(e){$('chapters').innerHTML=`<h3>${t}</h3><p>โหลดสารบัญไม่ได้: ${e.message}</p>`+thLinks(t);status('โหลดสารบัญไม่ได้ — ใช้ลิงก์เว็บไทยด้านบน')}
 }
-async function read(chId){
-  const box=$('reader');box.innerHTML='กำลังโหลดภาพ...';
+async function read(chId,retry){
+  const box=$('reader');if(!retry)box.innerHTML='กำลังโหลดภาพ...';
   try{
     status('กำลังโหลดภาพ...');
     const m=await j(`${API}/at-home/server/${chId}`);const ch=await j(`${API}/chapter/${chId}`);
     const h=m.baseUrl,hash=ch.data&&ch.data.attributes.hash,files=ch.data&&(ch.data.attributes.dataSaver||ch.data.attributes.data);
-    if(!h||!hash||!files||!files.length)throw new Error('เซิร์ฟเวอร์ภาพไม่ส่งข้อมูล (ลองตอนอื่น)');
+    if(!h||!hash||!files||!files.length){
+      // ข้ามไปตอนถัดไปใน feed อัตโนมัติ (สูงสุด 5 ตอน)
+      const feed=window._feed||[];const idx=(retry&&retry.idx!==undefined)?retry.idx:(window._idx||0);
+      const n=(retry&&retry.n)||0;
+      if(feed.length&&idx+1<feed.length&&n<5){window._idx=idx+1;return read(feed[idx+1].id,{idx:idx+1,n:n+1})}
+      throw new Error('ตอนนี้ไม่มีภาพฟรีบน MangaDx (ติดลิขสิทธิ์/ลิงก์ไปเว็บอื่น) — ลองตอนอื่นหรือเว็บไทย');
+    }
     const q=ch.data.attributes.dataSaver?'/data-saver/':'/data/';
     box.innerHTML='<h3>กำลังอ่าน (ไม่มีโฆษณา 100%)</h3>'+files.map(f=>imgTag(`${h}${q}${hash}/${f}`)).join('');
     status('โหลดภาพสำเร็จ: '+files.length+' หน้า');
