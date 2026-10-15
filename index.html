@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — บล็อกโฆษณา</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v8 อ่านในเว็บได้จริง</small></h2>
+<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v9 อ่านในเว็บ (jina)</small></h2>
 <div>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
@@ -42,9 +42,14 @@ function mdxTr(url){
   return 'https://api-mangadex-org.translate.goog'+path+(path.includes('?')?'&':'?')+'_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en';
 }
 async function j(url){
-  // 1. Google Translate proxy (ตัวหลัก — เทสแล้วได้ JSON จริง)
+  // 1. Jina Reader proxy (ส่ง CORS header ให้เบราว์เซอร์ + ไม่โดนบล็อก) — ตัด markdown header ทิ้งเหลือ JSON
+  try{
+    const r=await fetch('https://r.jina.ai/'+url);
+    if(r.ok){const t=await r.text();const i=t.indexOf('{');if(i>=0)return JSON.parse(t.slice(i))}
+  }catch(e){}
+  // 2. Google Translate proxy
   try{const r=await fetch(mdxTr(url));if(r.ok){const t=await r.text();if(t.startsWith('{'))return JSON.parse(t)}}catch(e){}
-  // 2. proxy สำรอง
+  // 3. proxy สำรอง
   for(const p of PROXIES){try{const r=await fetch(p(url));if(r.ok){const t=await r.text();if(t.startsWith('{'))return JSON.parse(t)}}catch(e){}}
   throw new Error('fetch failed');
 }
