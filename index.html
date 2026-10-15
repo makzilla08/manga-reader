@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — บล็อกโฆษณา</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v6 แตะปกอ่านทันที</small></h2>
+<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v7 อ่านในเว็บ</small></h2>
 <div>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
@@ -24,7 +24,18 @@
 const API='https://api.mangadex.org';
 const $=id=>document.getElementById(id);
 const status=m=>{$('status').textContent=m};
-const PROXIES=[u=>'https://corsproxy.io/?url='+encodeURIComponent(u),u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)];
+const PROXIES=[
+ u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
+ u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+ u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u),
+ u=>'https://test.cors.workers.dev/?'+u,
+ u=>'https://api-mangadex-org.translate.goog/manga'+u.slice(u.indexOf('/manga')+6)+'&_x_tr_sl=en&_x_tr_tl=th&_x_tr_hl=th',
+ u=>'https://cors.eu.org/'+u,
+ u=>'https://thingproxy.freeboard.io/fetch/'+u
+];
+// img tag กัน hotlink/CORS: พังแล้วลองผ่าน weserv อัตโนมัติ
+const IMGERR=`onerror="this.onerror=null;this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.src.replace(/^https?:\\/\\//,''))"`;
+function imgTag(s){return `<img loading="lazy" src="${s}" referrerpolicy="no-referrer" ${IMGERR}>`}
 async function j(url){
   // 1. try direct (works on GitHub Pages / real browser)
   try{const r=await fetch(url);if(r.ok)return r.json()}catch(e){}
@@ -83,12 +94,8 @@ function renderAL(media,hasNext){
   if(hasNext){const b=document.createElement('button');b.textContent='⬇ โหลดเพิ่ม (อีก 50 เรื่อง)';b.style.cssText='margin:12px;padding:12px;font-size:15px';b.onclick=loadMore;el.appendChild(b)}
 }
 async function readNow(t){
-  // คลิกเดียวอ่านเลย: เปิดแท็บ Oremanga ค้นเรื่องนี้ให้ทันที (กันพลาดถ้าอ่านตรงไม่ได้)
-  window.open('https://oremanga.net/?s='+encodeURIComponent(t),'_blank');
-  // พร้อมกันนั้นโชว์แผงในแอป + ลองเปิดอ่านตรงเบื้องหลัง
-  $('chapters').innerHTML=`<h3>${t}</h3><p>เปิดแท็บ Oremanga ให้แล้ว — ระหว่างนี้กำลังลองเปิดอ่านตรงในแอป...</p>`+thLinks(t)+`<div style="margin:8px 0"><input id="chapUrl" placeholder="หรือวาง URL ตอนจากเว็บไทย แล้วกดปุ่ม" style="width:320px"><button id="btnChapUrl">อ่าน URL นี้แบบบล็อกโฆษณา</button></div>`;
-  $('btnChapUrl').onclick=loadThUrl2;
-  window.scrollTo(0,0);
+  // คลิกเดียวอ่านในเว็บ: โชว์แผงก่อน แล้วเปิดตอนล่าสุดทันทีที่หาไฟล์เจอ
+  status('กำลังเปิด "'+t+'" ...');
   const url=`${API}/manga?limit=3&title=${encodeURIComponent(t)}&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&order[relevance]=desc`;
   const tries=['direct',...PROXIES];
   for(const p of tries){
@@ -160,7 +167,7 @@ async function read(chId){
     const m=await j(`${API}/at-home/server/${chId}`);const ch=await j(`${API}/chapter/${chId}`);
     const h=m.baseUrl,hash=ch.data.attributes.hash,files=ch.data.attributes.dataSaver||ch.data.attributes.data;
     const q=ch.data.attributes.dataSaver?'/data-saver/':'/data/';
-    box.innerHTML='<h3>กำลังอ่าน (ไม่มีโฆษณา 100%)</h3>'+files.map(f=>`<img loading="lazy" src="${h}${q}${hash}/${f}" referrerpolicy="no-referrer">`).join('');
+    box.innerHTML='<h3>กำลังอ่าน (ไม่มีโฆษณา 100%)</h3>'+files.map(f=>imgTag(`${h}${q}${hash}/${f}`)).join('');
     status('โหลดภาพสำเร็จ: '+files.length+' หน้า');
     box.scrollIntoView();
   }catch(e){box.innerHTML='โหลดภาพไม่ได้: '+e.message+' (เซิร์ฟเวอร์ MangaDx อาจบล็อกเน็ตคุณ) — เปิดอ่านที่เว็บไทยแทน';status('อ่านไม่ได้: '+e.message)}
@@ -178,7 +185,7 @@ async function loadThUrl2(){
     if(!imgs.length)imgs=[...doc.querySelectorAll('img')];
     imgs=imgs.map(i=>i.src||i.dataset.src||i.dataset.original).filter(s=>s&&s.startsWith('http')&&!s.includes('logo')&&!s.includes('banner')&&!s.includes('avatar'));
     const uniq=[...new Set(imgs)];
-    if(uniq.length){box.innerHTML=`<h3>บล็อกโฆษณาแล้ว: ${uniq.length} ภาพ</h3>`+uniq.map(s=>`<img loading="lazy" src="${s}" referrerpolicy="no-referrer">`).join('');status('ดึงภาพสำเร็จ');return}
+    if(uniq.length){box.innerHTML=`<h3>บล็อกโฆษณาแล้ว: ${uniq.length} ภาพ</h3>`+uniq.map(s=>imgTag(s)).join('');status('ดึงภาพสำเร็จ');return}
   }catch(e){}}
   box.innerHTML='ดึงภาพในแอปไม่ได้ (เว็บปลายทางกันไว้) — กดเปิดอ่านในแท็บใหม่แทน';window.open(url,'_blank');
 }
