@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — บล็อกโฆษณา</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v9 อ่านในเว็บ (jina)</small></h2>
+<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v10 กัน crash</small></h2>
 <div>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
@@ -117,7 +117,7 @@ async function readNow(t){
     window._feed=f.data;window._title=t;
     openChapter(0);
     // สารบัญไว้เปลี่ยนตอนด้านล่าง
-    const nav=`<h3>${t} — ตอนล่าสุดถึงเก่ากว่า (แตะเพื่อเปลี่ยนตอน)</h3>`+thLinks(t)+f.data.map((c,i)=>`<button data-ch="${i}">Ch.${c.attributes.chapter||'?'} ${(c.attributes.title||'').slice(0,30)} [${c.attributes.translatedLanguage}]</button>`).join('');
+    const nav=`<h3>${t} — ตอนล่าสุดถึงเก่ากว่า (แตะเพื่อเปลี่ยนตอน)</h3>`+thLinks(t)+(f.data||[]).map((c,i)=>`<button data-ch="${i}">Ch.${c.attributes.chapter||'?'} ${((c.attributes||{}).title||'').slice(0,30)} [${c.attributes.translatedLanguage}]</button>`).join('');
     $('chapters').innerHTML=nav;
     $('chapters').querySelectorAll('button[data-ch]').forEach(b=>b.onclick=()=>openChapter(+b.dataset.ch));
   }catch(e){
@@ -170,7 +170,8 @@ async function read(chId){
   try{
     status('กำลังโหลดภาพ...');
     const m=await j(`${API}/at-home/server/${chId}`);const ch=await j(`${API}/chapter/${chId}`);
-    const h=m.baseUrl,hash=ch.data.attributes.hash,files=ch.data.attributes.dataSaver||ch.data.attributes.data;
+    const h=m.baseUrl,hash=ch.data&&ch.data.attributes.hash,files=ch.data&&(ch.data.attributes.dataSaver||ch.data.attributes.data);
+    if(!h||!hash||!files||!files.length)throw new Error('เซิร์ฟเวอร์ภาพไม่ส่งข้อมูล (ลองตอนอื่น)');
     const q=ch.data.attributes.dataSaver?'/data-saver/':'/data/';
     box.innerHTML='<h3>กำลังอ่าน (ไม่มีโฆษณา 100%)</h3>'+files.map(f=>imgTag(`${h}${q}${hash}/${f}`)).join('');
     status('โหลดภาพสำเร็จ: '+files.length+' หน้า');
