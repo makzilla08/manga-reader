@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — บล็อกโฆษณา</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v7 อ่านในเว็บ</small></h2>
+<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v8 อ่านในเว็บได้จริง</small></h2>
 <div>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
@@ -36,12 +36,17 @@ const PROXIES=[
 // img tag กัน hotlink/CORS: พังแล้วลองผ่าน weserv อัตโนมัติ
 const IMGERR=`onerror="this.onerror=null;this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.src.replace(/^https?:\\/\\//,''))"`;
 function imgTag(s){return `<img loading="lazy" src="${s}" referrerpolicy="no-referrer" ${IMGERR}>`}
+function mdxTr(url){
+  // MangaDex API ผ่าน Google Translate proxy (Google ไม่โดนบล็อก + ส่ง CORS ให้)
+  const path=url.slice(url.indexOf('api.mangadex.org')+16);
+  return 'https://api-mangadex-org.translate.goog'+path+(path.includes('?')?'&':'?')+'_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en';
+}
 async function j(url){
-  // 1. try direct (works on GitHub Pages / real browser)
-  try{const r=await fetch(url);if(r.ok)return r.json()}catch(e){}
-  // 2. try proxies
-  for(const p of PROXIES){try{const r=await fetch(p(url));if(r.ok)return r.json()}catch(e){}}
-  throw new Error('fetch failed: '+url);
+  // 1. Google Translate proxy (ตัวหลัก — เทสแล้วได้ JSON จริง)
+  try{const r=await fetch(mdxTr(url));if(r.ok){const t=await r.text();if(t.startsWith('{'))return JSON.parse(t)}}catch(e){}
+  // 2. proxy สำรอง
+  for(const p of PROXIES){try{const r=await fetch(p(url));if(r.ok){const t=await r.text();if(t.startsWith('{'))return JSON.parse(t)}}catch(e){}}
+  throw new Error('fetch failed');
 }
 function langParam(){const v=$('origin').value;if(v==='jp')return '&originalLanguage[]=ja';if(v==='kr')return '&originalLanguage[]=ko';if(v==='cn')return '&originalLanguage[]=zh';return ''} // all = no filter
 function cover(m){const c=(m.relationships||[]).find(r=>r.type==='cover_art');const f=c?.attributes?.fileName;return f?`https://uploads.mangadex.org/covers/${m.id}/${f}.256.jpg`:''}
@@ -97,28 +102,23 @@ async function readNow(t){
   // คลิกเดียวอ่านในเว็บ: โชว์แผงก่อน แล้วเปิดตอนล่าสุดทันทีที่หาไฟล์เจอ
   status('กำลังเปิด "'+t+'" ...');
   const url=`${API}/manga?limit=3&title=${encodeURIComponent(t)}&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&order[relevance]=desc`;
-  const tries=['direct',...PROXIES];
-  for(const p of tries){
-    try{
-      status('กำลังเปิด "'+t+'" ...');
-      const r=p==='direct'?await fetch(url):await fetch(p(url));
-      if(!r.ok)continue;
-      const d=await r.json();
-      if(!d.data||!d.data.length)continue;
-      const id=d.data[0].id;
-      const f=await j(`${API}/manga/${id}/feed?limit=20&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
-      if(!f.data||!f.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>ไม่มีตอนอ่านฟรีบน MangaDx</p>`+thLinks(t);status('ไม่มีตอนฟรี — ใช้ลิงก์เว็บไทย');return}
-      window._feed=f.data;window._title=t;
-      openChapter(0);
-      // สารบัญไว้เปลี่ยนตอนด้านล่าง
-      const nav=`<h3>${t} — ตอนล่าสุดถึงเก่ากว่า (แตะเพื่อเปลี่ยนตอน)</h3>`+thLinks(t)+f.data.map((c,i)=>`<button data-ch="${i}">Ch.${c.attributes.chapter||'?'} ${(c.attributes.title||'').slice(0,30)} [${c.attributes.translatedLanguage}]</button>`).join('');
-      $('chapters').innerHTML=nav;
-      $('chapters').querySelectorAll('button[data-ch]').forEach(b=>b.onclick=()=>openChapter(+b.dataset.ch));
-      return;
-    }catch(e){}
+  try{
+    status('กำลังเปิด "'+t+'" ...');
+    const d=await j(url);
+    if(!d.data||!d.data.length)throw new Error('no data');
+    const id=d.data[0].id;
+    const f=await j(`${API}/manga/${id}/feed?limit=20&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
+    if(!f.data||!f.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>ไม่มีตอนอ่านฟรีบน MangaDx</p>`+thLinks(t);status('ไม่มีตอนฟรี — ใช้ลิงก์เว็บไทย');return}
+    window._feed=f.data;window._title=t;
+    openChapter(0);
+    // สารบัญไว้เปลี่ยนตอนด้านล่าง
+    const nav=`<h3>${t} — ตอนล่าสุดถึงเก่ากว่า (แตะเพื่อเปลี่ยนตอน)</h3>`+thLinks(t)+f.data.map((c,i)=>`<button data-ch="${i}">Ch.${c.attributes.chapter||'?'} ${(c.attributes.title||'').slice(0,30)} [${c.attributes.translatedLanguage}]</button>`).join('');
+    $('chapters').innerHTML=nav;
+    $('chapters').querySelectorAll('button[data-ch]').forEach(b=>b.onclick=()=>openChapter(+b.dataset.ch));
+  }catch(e){
+    $('chapters').innerHTML=`<h3>${t}</h3><p>เปิดไม่ได้: ${e.message}</p>`+thLinks(t);
+    status('เปิดอ่านตรงไม่ได้ — กดปุ่มเว็บไทยด้านบน');
   }
-  $('chapters').innerHTML=`<h3>${t}</h3><p>เน็ตคุณต่อ MangaDx ไม่ได้</p>`+thLinks(t);
-  status('เปิดอ่านตรงไม่ได้ — กดปุ่มเว็บไทยด้านบน');
 }
 async function openChapter(i){
   window._idx=i;
