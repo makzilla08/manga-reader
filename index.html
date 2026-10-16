@@ -13,7 +13,9 @@
 </select>
 <select id="cat" title="หมวดของเว็บนั้น" style="max-width:190px"></select>
 <input id="q" placeholder="ค้นหาเรื่อง..."><button id="btnSearch">ค้นหา</button>
-<button id="btnPop">ยอดนิยม</button><div id="status"></div></div></header>
+<button id="btnPop">ยอดนิยม</button>
+<div id="pager" style="display:none"> <button id="pgPrev">◀ ก่อนหน้า</button> <b id="pgInfo"></b> <button id="pgNext">ถัดไป ▶</button></div>
+<div id="status"></div></div></header>
 <div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader"></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -232,21 +234,44 @@ function catUrl(){
   const c=CATS[src][+$('cat').value||0]||CATS[src][0];
   return {url:base()+c.u,label:c.t};
 }
-async function runSearchOrPop(mode){
+function pageUrl(baseUrl,page,query){
+  // ทุกเว็บใช้ /page/N/ ต่อท้าย; ค้นหา WP ใช้ ?s= + /page/N/
+  if(query)return baseUrl+(page>1?'page/'+page+'/':'')+'?s='+encodeURIComponent(query);
+  return baseUrl+(page>1?'page/'+page+'/':'');
+}
+function maxPageOf(html,baseUrl){
+  // หาเลขหน้าสูงสุดจากลิงก์ pagination (เช่น /page/244/)
+  let mx=1;
+  const esc=baseUrl.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp(esc+'[^"\\s<>]*page/(\\d+)/?','g');
+  let m;while((m=re.exec(html))){const n=+m[1];if(n>mx)mx=n}
+  return mx;
+}
+function syncPager(page,max){
+  const p=$('pager');p.style.display='';
+  $('pgInfo').textContent='หน้า '+page+(max>1?' / '+max+' (รวม ~'+(max*10)+'+ เรื่อง)':'');
+  $('pgPrev').disabled=page<=1;
+  $('pgNext').disabled=page>=max;
+}
+async function runSearchOrPop(mode,page){
   const b=base(),src=$('src').value;
+  if(page===undefined)page=1;
+  window._page=page;window._mode=mode;
   // ทุกแหล่งผ่าน worker (static 100% — ไม่ต้องมีเซิร์ฟเวอร์ของเรา)
   try{
-    let html,items,badge='';
+    let html,items,badge='',max=1;
     if(mode==='pop'){
       const c=catUrl();badge=c.label;
-      status('กำลังโหลด ['+c.label+'] จาก '+$('src').selectedOptions[0].text+' ...');
-      html=await viaWorker(c.url);
+      status('กำลังโหลด ['+c.label+'] หน้า '+page+' ...');
+      const url=pageUrl(c.url,page,'');
+      html=await viaWorker(url);
+      max=Math.max(maxPageOf(html,c.url),page);
     }else{
       const q=$('q').value.trim();
       if(!q)return status('พิมพ์ชื่อเรื่องก่อน');
-      status('กำลังค้นหา "'+q+'" ...');
-      html=await viaWorker(b+'/?s='+encodeURIComponent(q));
-      badge='🔍 ค้นหา';
+      status('กำลังค้นหา "'+q+'" หน้า '+page+' ...');
+      html=await viaWorker(pageUrl(b+'/',page,q));
+      badge='🔍 ค้นหา';max=Math.max(maxPageOf(html,b+'/'),page);
     }
     if(src==='oremanga')items=parseOreCards(html,b,badge);
     else if(src==='dark')items=parseDarkCards(html,b).map(x=>({...x,badge}));
@@ -254,6 +279,8 @@ async function runSearchOrPop(mode){
     if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บ/หมวด หรือคำค้น)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/หมวด/คำค้น');return}
     status(badge+' — เจอ '+items.length+' เรื่อง (แตะปกเพื่ออ่าน)');
     renderCards(items);
+    syncPager(page,max);
+    window.scrollTo(0,0);
   }catch(e){status('โหลดไม่ได้: '+e.message+' — ลองกดอีกครั้ง')}
 }
 function renderCards(items){
@@ -327,15 +354,10 @@ async function openChapter(i){
     imgs=parseOreImages(html);
     } // end else (oremanga via worker)
     if(!imgs.length)throw new Error(src==='lc'?'เว็บนี้โหลดภาพด้วยสคริปต์ — กดปุ่ม "เปิดที่เว็บต้นทาง" อ่านแทน':'ไม่มีภาพในตอนนี้');
-    const prev=i>0?`<button id="btnPrev">◀ ตอนก่อนหน้า</button>`:'';
-    const next=i<window._feed.length-1?`<button id="btnNext">ตอนถัดไป ▶</button>`:'';
-    const opts=window._feed.map((u2,j)=>{const m2=u2.match(/-(\d+)\/?$/);return `<option value="${j}"${j===i?' selected':''}>ตอนที่ ${m2?m2[1]:j+1}</option>`}).join('');
-    box.innerHTML=`<div style="text-align:center;padding:8px;position:sticky;top:60px;background:#111">${prev}<select id="chSel" style="max-width:170px">${opts}</select><b> (${i+1}/${window._feed.length}) </b>${next}</div>`+
+    const m0=u.match(/(\d+)\/?$/);
+    box.innerHTML=`<div style="text-align:center;padding:4px;color:#888;font-size:12px">ตอนที่ ${m0?m0[1]:''} (${i+1}/${window._feed.length}) — ใช้แถบล่างเลื่อนตอน</div>`+
       imgs.map(s=>imgTag(s)).join('');
-    $('chSel').onchange=e=>openChapter(+e.target.value);
     syncFloat(i);
-    if(i>0)$('btnPrev').onclick=()=>openChapter(i-1);
-    if(i<window._feed.length-1)$('btnNext').onclick=()=>openChapter(i+1);
     status('โหลดภาพสำเร็จ: '+imgs.length+' หน้า (บล็อกโฆษณาแล้ว)');
     $('btnBack').style.display='';
     box.scrollIntoView();
@@ -354,6 +376,8 @@ $('fSel').onchange=e=>openChapter(+e.target.value);
 $('fPrev').onclick=()=>{if(window._idx>0)openChapter(window._idx-1)};
 $('fNext').onclick=()=>{if(window._idx<window._feed.length-1)openChapter(window._idx+1)};
 $('fTop').onclick=()=>window.scrollTo(0,0);
+$('pgPrev').onclick=()=>{if(window._page>1)runSearchOrPop(window._mode||'pop',window._page-1)};
+$('pgNext').onclick=()=>runSearchOrPop(window._mode||'pop',(window._page||1)+1);
 $('fHome').onclick=()=>goHome();
 $('btnSearch').onclick=()=>runSearchOrPop('search');
 $('btnPop').onclick=()=>runSearchOrPop('pop');

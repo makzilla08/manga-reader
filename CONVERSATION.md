@@ -41,7 +41,12 @@
   - สร้าง `~/manga-proxy/` (worker.js + wrangler.jsonc) allowlist 7 โดเมน (oremanga/img/manga-lc/mangaclaw/dark) + CORS `*` — deploy แล้ว: `https://manga-proxy.hls-worker.workers.dev/?url=...`
   - เทสผ่าน worker: manga-lc ตอน (เจอ `data-src` mangaclaw ครบ), dark-manga ต้องใช้ `www` (non-www 404) — `?s=` search ของ dark โดน challenge บ้างเป็นครั้งคราว
   - โครง dark-manga (Ts theme mangareader): การ์ด `.bsx` (30) / `.listupd` (9), สารบัญ `.eplister` + `chapternum/ตอนที่ N`, genre `/genres/<slug>/`, ภาพตอนฝังใน `ts_reader.run({post_id, prevUrl, nextUrl, sources:[{images:[...]}]})`
-  - **งานค้าง**: wire worker เข้า index.html (rawHtml via worker + parser dark/lc + dropdown แหล่ง 3 เจ้า) — ยังไม่ได้เริ่ม
+  - v13 (16 ต.ค. 2026 — เสร็จ ✅ push 29bd819): wire worker เข้า index.html สำเร็จ
+  - ทุกแหล่งผ่าน worker (static 100% — อยู่ GitHub Pages ได้เลย **ไม่ต้องใช้ Vercel**, worker ตัวเดียวพอ)
+  - dropdown หมวดตามเว็บ: Oremanga 5 (ติดเทรนด์/manga-list/JP/KR/CN), Dark 11 (หน้าแรก/JP/KR/CN/Action/Adventure/Fantasy/Romance/Comedy/Drama/Isekai), LC 8 (หน้าแรก/JP/KR/CN/Action/Fantasy/Isekai/MartialArts)
+  - Oremanga เลิกใช้ Jina (เคย 403) → worker raw HTML: การ์ด `.flexbox-item/.flexbox2-item`, ตอน regex `/<slug>/<slug>-N/`, ภาพ `img.oremanga.net` ตรงๆ
+  - เทส headed ผ่าน: ore 10 การ์ด/10 ตอน/52 ภาพ, dark 13 การ์ด/341 ตอน/40 ภาพ, lc 25 การ์ด/602 ตอน
+  - ข้อจำกัด: ภาพตอน LC ไม่ได้อยู่ใน HTML (Madara โหลดผ่าน JS) → แอปแจ้งให้กด "เปิดที่เว็บต้นทาง" แทน
 
 ## เรื่องค้าง
 - user เน็ตต่อ MangaDx ไม่ได้โดยตรง ต้องพึ่ง Jina
