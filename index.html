@@ -70,7 +70,7 @@ async function viaWorker(url){
   return await r.text();
 }
 function doc(html){return new DOMParser().parseFromString(html,'text/html')}
-function absUrl(href,b){try{return new URL(href,b).toString().replace(/\/$/,'')}catch{return ''}}
+function absUrl(href,b){try{const u=new URL(href,b);if(u.protocol!=='http:'&&u.protocol!=='https:')return '';return u.toString().replace(/\/$/,'')}catch{return ''}}
 // --- oremanga (หน้าแรก .flexbox-item=ติดเทรนด์ 6 + .flexbox4-item=มาใหม่ 36 / หมวด .flexbox2-item) ---
 function parseOreCards(html,b,badge){
   const d=doc(html),out=[],seen=new Set();
@@ -189,7 +189,11 @@ function parseLcImages(html){
     if(/^https?:\/\//.test(s)&&/mangaclaw|manga-lc|uploads|chapter/i.test(s))out.push(s);
   });
   const uniq=[...new Set(out)].filter(s=>!/banner|gif|logo|avatar/i.test(s));
-  if(uniq.length)return uniq;
+  // ภาพเนื้อเรื่อง LC ไม่ได้อยู่ใน HTML (โหลดผ่าน JS) — ถ้าเหลือแต่ไฟล์ site-asset ถือว่าไม่มีเนื้อเรื่อง
+  const content=uniq.filter(s=>/mangaclaw|mkklcdn|chapter|manga\/[^/]+\/\d/i.test(s)||!/manga-lc\.net/.test(s));
+  if(content.length)return content;
+  if(uniq.some(s=>/mangaclaw|mkklcdn/i.test(s)))return uniq;
+  return [];
   // fallback: data-src ใดๆ ที่เป็นรูปเนื้อเรื่อง
   const all=[...d.querySelectorAll('img')].map(i=>i.getAttribute('data-src')||i.getAttribute('src')||'')
     .filter(s=>/^https?:\/\//.test(s)&&/\.(jpg|jpeg|png|webp)/i.test(s)&&!/banner|gif|logo|avatar|cover/i.test(s));
