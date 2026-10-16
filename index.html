@@ -88,6 +88,7 @@ async function viaWorker(url){
   return await r.text();
 }
 function doc(html){return new DOMParser().parseFromString(html,'text/html')}
+function isChallenge(html){return /just a moment|performing security verification|captcha/i.test(html||'')}
 function absUrl(href,b){try{const u=new URL(href,b);if(u.protocol!=='http:'&&u.protocol!=='https:')return '';return u.toString().replace(/\/$/,'')}catch{return ''}}
 // --- oremanga (หน้าแรก .flexbox-item=ติดเทรนด์ 6 + .flexbox4-item=มาใหม่ 36 / หมวด .flexbox2-item) ---
 function parseOreCards(html,b,badge){
@@ -386,6 +387,12 @@ async function runSearchOrPop(mode,page){
       if(!q)return status('พิมพ์ชื่อเรื่องก่อน');
       status('กำลังค้นหา "'+q+'" หน้า '+page+' ...');
       html=await viaWorker(pageUrl(b+'/',page,q));
+      if(isChallenge(html)&&src==='dark'){
+        // ค้น Dark โดน Cloudflare กันบอททุกช่องทาง — ให้ browse หมวดแทน
+        status('ค้น Dark ไม่ได้ (เว็บกันบอท) — เลือกหมวดด้านบน browse แทน');
+        $('list').innerHTML='<p>🔍 ค้น "'+q+'" ใน Dark-Manga ไม่ได้ (เว็บกันบอท)<br>ให้เลือกหมวด (Action/Fantasy/…) ด้านบน browse แทน หรือค้นที่ Oremanga / Manga-LC</p>';
+        return;
+      }
       badge='🔍 ค้นหา';max=Math.max(maxPageOf(html,b+'/'),page);
       items=parseOne(html).it;
       let p=page;
@@ -412,7 +419,14 @@ async function runSearchOrPop(mode,page){
     window._sub=sub;window._subs=subs;
     syncPager(page,max);
     window.scrollTo(0,0);
-  }catch(e){status('โหลดไม่ได้: '+e.message+' — ลองกดอีกครั้ง')}
+  }catch(e){
+    if(mode==='search'&&src==='dark'&&/403/.test(e.message)){
+      status('ค้น Dark ไม่ได้ (เว็บกันบอท) — เลือกหมวด browse แทน');
+      $('list').innerHTML='<p>🔍 ค้นใน Dark-Manga ไม่ได้ (เว็บกันบอท)<br>ให้เลือกหมวดด้านบน browse แทน หรือค้นที่ Oremanga / Manga-LC</p>';
+      return;
+    }
+    status('โหลดไม่ได้: '+e.message+' — ลองกดอีกครั้ง')
+  }
 }
 function renderCards(items){
   const el=$('list');el.innerHTML='';$('chapters').innerHTML='';
