@@ -299,10 +299,13 @@ function pageUrl(baseUrl,page,query){
 }
 function maxPageOf(html,baseUrl){
   // หาเลขหน้าสูงสุดจากลิงก์ pagination (เช่น /page/244/)
+  // slug ไทยใน HTML เป็น percent-encoded — ลองทั้งดิบและ encode
   let mx=1;
-  const esc=baseUrl.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const re=new RegExp(esc+'[^"\\s<>]*page/(\\d+)/?','g');
-  let m;while((m=re.exec(html))){const n=+m[1];if(n>mx)mx=n}
+  for(const v of [baseUrl,encodeURI(baseUrl)]){
+    const esc=v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const re=new RegExp(esc+'[^"\\s<>]*page/(\\d+)/?','gi');
+    let m;while((m=re.exec(html))){const n=+m[1];if(n>mx)mx=n}
+  }
   return mx;
 }
 function syncPager(page,max){
