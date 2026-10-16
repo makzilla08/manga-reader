@@ -374,6 +374,7 @@ async function runSearchOrPop(mode,page){
       let p=effPage;
       while(items.length<PAGE_SIZE&&!cat.list&&p<max&&p-effPage<3){
         p++;
+        status('กำลังโหลด ['+badge+'] (สะสม '+items.length+' เรื่อง — หน้าเว็บ '+p+'/'+max+') ...');
         try{
           const h2=await viaWorker(pageUrl(c.url,p,''));
           const more=parseOne(h2).it.filter(x=>!items.some(y=>y.link===x.link));
