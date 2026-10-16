@@ -2,26 +2,56 @@
 <title>Manga Reader TH — เว็บไทยล้วน</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:4px 8px;background:#1c1c1c;position:sticky;top:0;z-index:10}header h2{font-size:14px;margin:2px 0}header h2 small{font-size:10px}input,select,button{padding:5px 6px;margin:2px;font-size:13px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}.src{font-size:11px;background:#753;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}#floatNav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(20,20,20,.95);border-top:1px solid #333;padding:8px;text-align:center}body.reading{padding-bottom:60px}body.reading header{display:none}</style></head><body>
 <div id="floatNav">🏠 <button id="fHome">โฮม</button> <button id="fPrev">◀</button> <select id="fSel" style="max-width:170px"></select> <button id="fNext">▶</button> <button id="fTop">⬆</button></div>
-<header><h2><a href="#" id="homeLink" style="color:#eee;text-decoration:none">📚 Manga Reader TH (เว็บไทย)</a> <small style="font-size:11px;color:#8f8">v12.4 อ่านสบาย 🇹🇭</small></h2>
+<header><h2><a href="#" id="homeLink" style="color:#eee;text-decoration:none">📚 Manga Reader TH (เว็บไทย)</a> <small style="font-size:11px;color:#8f8">v13 worker 3 แหล่ง 🇹🇭</small></h2>
 <div>
 <button id="btnHome" style="font-size:15px">🏠 โฮม</button>
 <button id="btnBack" style="display:none">◀ กลับสารบัญ</button>
-<select id="origin">
-<option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
-<option value="manga">🇯🇵 ญี่ปุ่น Manga</option>
-<option value="manhwa">🇰🇷 เกาหลี Manhwa</option>
-<option value="manhua">🇨🇳 จีน Manhua</option>
-</select>
-<select id="src" title="แหล่งเดียว: Oremanga">
+<select id="src" title="เลือกเว็บต้นทาง">
 <option value="oremanga">Oremanga</option>
+<option value="dark">Dark-Manga</option>
+<option value="lc">Manga-LC</option>
 </select>
+<select id="cat" title="หมวดของเว็บนั้น" style="max-width:190px"></select>
 <input id="q" placeholder="ค้นหาเรื่อง..."><button id="btnSearch">ค้นหา</button>
 <button id="btnPop">ยอดนิยม</button><div id="status"></div></div></header>
 <div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader"></div>
 <script>
 const $=id=>document.getElementById(id);
 const status=m=>{$('status').textContent=m};
-const BASE={oremanga:'https://www.oremanga.net',nekopost:'https://www.nekopost.net',niceoppai:'https://www.niceoppai.net'};
+const BASE={oremanga:'https://www.oremanga.net',dark:'https://www.dark-manga.com',lc:'https://manga-lc.net'};
+const WORKER='https://manga-proxy.hls-worker.workers.dev/?url=';
+// หมวดตามที่แต่ละเว็บแบ่งไว้ (ป้าย badge = ชื่อหมวดที่เลือก)
+const CATS={
+oremanga:[
+ {t:'🔥 ติดเทรนด์ (หน้าแรก)',u:'/'},
+ {t:'📖 รวมทั้งหมด (manga-list)',u:'/manga-list-รายชื่อมังงะ/'},
+ {t:'🇯🇵 ญี่ปุ่น Manga',u:'/genre/manga/'},
+ {t:'🇰🇷 เกาหลี Manhwa',u:'/genre/manhwa/'},
+ {t:'🇨🇳 จีน Manhua',u:'/genre/manhua/'},
+],
+dark:[
+ {t:'🔥 ยอดนิยม (หน้าแรก)',u:'/'},
+ {t:'🇯🇵 ญี่ปุ่น Manga',u:'/genres/มังงะญี่ปุ่น/'},
+ {t:'🇰🇷 เกาหลี Manhwa',u:'/genres/มังฮวา/'},
+ {t:'🇨🇳 จีน Manhua',u:'/genres/มังงะจีน/'},
+ {t:'⚔️ Action',u:'/genres/action/'},
+ {t:'🗺️ Adventure',u:'/genres/adventure/'},
+ {t:'🐉 Fantasy',u:'/genres/fantasy/'},
+ {t:'💕 Romance',u:'/genres/โรแมนติก/'},
+ {t:'😂 Comedy',u:'/genres/comedy/'},
+ {t:'🎭 Drama',u:'/genres/ดราม่า/'},
+ {t:'🌀 Isekai ต่างโลก',u:'/genres/ต่างโลก/'},
+],
+lc:[
+ {t:'🔥 ยอดนิยม (หน้าแรก)',u:'/'},
+ {t:'🇯🇵 ญี่ปุ่น Manga',u:'/manga-genre/manga/'},
+ {t:'🇰🇷 เกาหลี Manhwa',u:'/manga-genre/manhwa/'},
+ {t:'🇨🇳 จีน Manhua',u:'/manga-genre/manhua/'},
+ {t:'⚔️ Action',u:'/manga-genre/action/'},
+ {t:'🐉 Fantasy',u:'/manga-genre/fantasy/'},
+ {t:'🌀 Isekai',u:'/manga-genre/isekai/'},
+ {t:'🥋 Martial Arts',u:'/manga-genre/martial-arts/'},
+]};
 const IMGERR=`onerror="this.onerror=null;this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.src.replace(/^https?:\\/\\//,''))"`;
 function imgTag(s){return `<img loading="lazy" src="${s}" referrerpolicy="no-referrer" ${IMGERR}>`}
 function base(){return BASE[$('src').value]||BASE.oremanga}
@@ -31,7 +61,120 @@ async function viaJina(url){
   if(!r.ok)throw new Error('Jina '+r.status);
   return await r.text();
 }
-// แยกโฆษณาพนันออก: เอาเฉพาะลิงก์ /series/ + ปกจริง (ไม่ใช่ banner/cdend/gif)
+async function viaWorker(url){
+  // ดึง raw HTML ผ่าน Cloudflare worker (มี CORS *) — สำหรับ dark-manga / manga-lc
+  const r=await fetch(WORKER+encodeURIComponent(url));
+  if(!r.ok)throw new Error('Worker '+r.status);
+  return await r.text();
+}
+function doc(html){return new DOMParser().parseFromString(html,'text/html')}
+function absUrl(href,b){try{return new URL(href,b).toString().replace(/\/$/,'')}catch{return ''}}
+// --- oremanga (หน้าแรก .flexbox-item / หมวด .flexbox2-item) ---
+function parseOreCards(html,b,badge){
+  const d=doc(html),out=[],seen=new Set();
+  d.querySelectorAll('.flexbox-item a[href*="/series/"], .flexbox2-item a[href*="/series/"]').forEach(a=>{
+    const link=absUrl(a.getAttribute('href'),b+'/');if(!link||seen.has(link))return;seen.add(link);
+    const img=a.querySelector('img');
+    const cover=img?(img.getAttribute('src')||''):'';
+    if(/cdend|banner|gif|logo|avatar/i.test(cover))return;
+    const title=(a.getAttribute('title')||a.textContent||'').trim().slice(0,120)||link.split('/').pop();
+    out.push({title,cover,link,genre:'',badge:badge||'🌏 รวม'});
+  });
+  return out;
+}
+function parseOreChapters(html,slug){
+  const re=new RegExp('https?://[^"\\s<>]+?/'+slug.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'-'+'[^"\\s<>/]*/?','g');
+  const found=[...new Set([...html.matchAll(re)].map(x=>x[0].replace(/\/$/,'')))];
+  const num=u=>{const m=u.match(/-(\d+)\/?$/);return m?+m[1]:-1};
+  found.sort((a,c)=>num(c)-num(a));
+  return found;
+}
+function parseOreImages(html){
+  const d=doc(html),out=[];
+  d.querySelectorAll('img').forEach(img=>{
+    const s=img.getAttribute('src')||'';
+    if(s.indexOf('https://img.oremanga.net/')===0)out.push(s);
+  });
+  return [...new Set(out)];
+}
+// --- dark-manga (Ts theme) ---
+function parseDarkCards(html,b){
+  const d=doc(html),out=[],seen=new Set();
+  d.querySelectorAll('.bsx a[title], .listupd .bsx a[title]').forEach(a=>{
+    const link=absUrl(a.getAttribute('href'),b+'/');if(!link||seen.has(link))return;seen.add(link);
+    const img=a.querySelector('img');
+    const cover=img?(img.getAttribute('src')||img.getAttribute('data-src')||''):'';
+    const title=(a.getAttribute('title')||a.textContent||'').trim()||link.split('/').pop();
+    out.push({title,cover,link,genre:'',badge:'🌏 รวม'});
+  });
+  return out;
+}
+function parseDarkChapters(html,b){
+  const d=doc(html),out=[],seen=new Set();
+  d.querySelectorAll('.eplister a, #chapterlist a').forEach(a=>{
+    const link=absUrl(a.getAttribute('href'),b+'/');if(!link||seen.has(link))return;seen.add(link);
+    out.push(link);
+  });
+  return out;
+}
+function parseDarkImages(html){
+  // ts_reader.run({..., sources:[{images:[...]}]})
+  const m=html.match(/"images"\s*:\s*(\[[^\]]*\])/);
+  if(!m)return [];
+  try{
+    const arr=JSON.parse(m[1].replace(/'/g,'"'));
+    return [...new Set(arr)].filter(s=>/^https?:\/\//.test(s)&&!/banner|gif|logo|avatar/i.test(s));
+  }catch{return []}
+}
+// --- manga-lc ---
+function parseLcCards(html,b){
+  const d=doc(html),out=[],seen=new Set();
+  d.querySelectorAll('a[href*="/manga/"]').forEach(a=>{
+    const href=a.getAttribute('href')||'';
+    if(!/\/manga\/[^/]+\/?$/.test(href))return;
+    const link=absUrl(href,b+'/');if(!link||seen.has(link))return;
+    if(/genres?|genre|category|tag/.test(link))return;
+    seen.add(link);
+    const card=a.closest('article, .bs, .item, li, div');
+    const img=(card?card.querySelector('img'):a.querySelector('img'));
+    const cover=img?(img.getAttribute('data-src')||img.getAttribute('src')||''):'';
+    const title=(a.getAttribute('title')||a.textContent||'').trim().slice(0,120)||link.split('/').pop();
+    if(!cover&&title.length<2)return;
+    out.push({title,cover,link,genre:'',badge:'🌏 รวม'});
+  });
+  return out.slice(0,60);
+}
+function parseLcChapters(html,b,slug){
+  const d=doc(html),out=[],seen=new Set();
+  const pick=(sel)=>{
+    d.querySelectorAll(sel).forEach(a=>{
+      const link=absUrl(a.getAttribute('href'),b+'/');if(!link||seen.has(link))return;
+      seen.add(link);out.push(link);
+    });
+  };
+  pick('ul.list-chap a, ul.volumns a, .list-chapter a, .chapter-list a');
+  if(out.length)return out;
+  d.querySelectorAll('a[href*="'+slug+'"]').forEach(a=>{
+    const href=a.getAttribute('href')||'';
+    if(!/ตอนที่|chapter|ch[-_]?\.?\d/i.test(href+a.textContent))return;
+    const link=absUrl(href,b+'/');if(!link||seen.has(link))return;seen.add(link);
+    out.push(link);
+  });
+  return out;
+}
+function parseLcImages(html){
+  const d=doc(html),out=[];
+  d.querySelectorAll('img[data-src], .reading-content img, #readerarea img, .entry-content img').forEach(img=>{
+    const s=img.getAttribute('data-src')||img.getAttribute('src')||'';
+    if(/^https?:\/\//.test(s)&&/mangaclaw|manga-lc|uploads|chapter/i.test(s))out.push(s);
+  });
+  const uniq=[...new Set(out)].filter(s=>!/banner|gif|logo|avatar/i.test(s));
+  if(uniq.length)return uniq;
+  // fallback: data-src ใดๆ ที่เป็นรูปเนื้อเรื่อง
+  const all=[...d.querySelectorAll('img')].map(i=>i.getAttribute('data-src')||i.getAttribute('src')||'')
+    .filter(s=>/^https?:\/\//.test(s)&&/\.(jpg|jpeg|png|webp)/i.test(s)&&!/banner|gif|logo|avatar|cover/i.test(s));
+  return [...new Set(all)];
+}
 function parseCards(md){
   // แยกด้วยการตัด string ล้วน (เลี่ยง regex literal เพี้ยนในบางเบราว์เซอร์)
   const out=[],seen=new Set();
@@ -80,27 +223,36 @@ function originBadge(g){
   if(g.includes('manga'))return '🇯🇵 ญี่ปุ่น';
   return '🌏 รวม';
 }
+function updateCats(){
+  const src=$('src').value,sel=$('cat');
+  sel.innerHTML=CATS[src].map((c,i)=>`<option value="${i}">${c.t}</option>`).join('');
+}
+function catUrl(){
+  const src=$('src').value;
+  const c=CATS[src][+$('cat').value||0]||CATS[src][0];
+  return {url:base()+c.u,label:c.t};
+}
 async function runSearchOrPop(mode){
-  const b=base();
+  const b=base(),src=$('src').value;
+  // ทุกแหล่งผ่าน worker (static 100% — ไม่ต้องมีเซิร์ฟเวอร์ของเรา)
   try{
-    let md,items;
+    let html,items,badge='';
     if(mode==='pop'){
-      status('กำลังโหลดยอดนิยมจาก '+$('src').selectedOptions[0].text+' ...');
-      md=await viaJina(b+'/');
+      const c=catUrl();badge=c.label;
+      status('กำลังโหลด ['+c.label+'] จาก '+$('src').selectedOptions[0].text+' ...');
+      html=await viaWorker(c.url);
     }else{
       const q=$('q').value.trim();
-      if(!q)return status('พิมพ์ชื่อเรื่องก่อน เช่น โซโล่ / Solo Leveling / One Piece');
+      if(!q)return status('พิมพ์ชื่อเรื่องก่อน');
       status('กำลังค้นหา "'+q+'" ...');
-      md=await viaJina(b+'/?s='+encodeURIComponent(q));
+      html=await viaWorker(b+'/?s='+encodeURIComponent(q));
+      badge='🔍 ค้นหา';
     }
-    items=parseCards(md);
-    // เติม genre + กรองตามชาติ
-    const v=$('origin').value;
-    items=items.map(c=>({...c,genre:c.genreInline||genreOf(md,c.link+'/'),badge:''}));
-    items.forEach(c=>c.badge=originBadge(c.genre));
-    if(v!=='all')items=items.filter(c=>c.genre.includes(v));
-    if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บต้นทาง หรือคำค้น)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/คำค้น');return}
-    status((mode==='pop'?'ยอดนิยม':'ค้นหา')+' — เจอ '+items.length+' เรื่อง (แตะปกเพื่ออ่าน)');
+    if(src==='oremanga')items=parseOreCards(html,b,badge);
+    else if(src==='dark')items=parseDarkCards(html,b).map(x=>({...x,badge}));
+    else items=parseLcCards(html,b).map(x=>({...x,badge}));
+    if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บ/หมวด หรือคำค้น)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/หมวด/คำค้น');return}
+    status(badge+' — เจอ '+items.length+' เรื่อง (แตะปกเพื่ออ่าน)');
     renderCards(items);
   }catch(e){status('โหลดไม่ได้: '+e.message+' — ลองกดอีกครั้ง')}
 }
@@ -114,7 +266,29 @@ function renderCards(items){
   }
 }
 async function openSeries(link,title){
-  const b=base();
+  const b=base(),src=$('src').value;
+  // worker sources: สารบัญจาก raw HTML
+  if(src==='dark'||src==='lc'||src==='oremanga'){
+    status('กำลังเปิด "'+title+'" ...');
+    let found=[];
+    try{
+      const html=await viaWorker(link+'/');
+      const slug=link.split('/').pop();
+      if(src==='dark')found=parseDarkChapters(html,b);
+      else if(src==='lc')found=parseLcChapters(html,b,slug);
+      else found=parseOreChapters(html,slug);
+      const num=u=>{const m=u.match(/(\d+)\/?$/);return m?+m[1]:-1};
+      found.sort((a,c)=>num(c)-num(a));
+    }catch(e){$('chapters').innerHTML=`<h3>${title}</h3><p>เปิดไม่ได้: ${e.message}</p><a target="_blank" rel="noopener" href="${link}/"><button>เปิดที่เว็บต้นทาง</button></a>`;return}
+    if(!found.length){$('chapters').innerHTML=`<h3>${title}</h3><p>ไม่เจอสารบัญ — <a target="_blank" rel="noopener" href="${link}/"><button>เปิดที่เว็บต้นทาง</button></a></p>`;status('ไม่เจอตอน');return}
+    window._feed=found;window._title=title;
+    $('chapters').innerHTML=`<h3>${title} — ${found.length} ตอน (แตะเพื่ออ่าน ไม่มีโฆษณา)</h3>`+
+      found.map((u,i)=>{const m=u.match(/(\d+)\/?$/);return `<button data-ch="${i}">ตอนที่ ${m?m[1]:'?'}</button>`}).join('')+
+      `<div style="margin-top:8px"><a target="_blank" rel="noopener" href="${link}/"><button>เปิดที่เว็บต้นทาง</button></a></div>`;
+    $('chapters').querySelectorAll('button[data-ch]').forEach(x=>x.onclick=()=>openChapter(+x.dataset.ch));
+    openChapter(0);
+    return;
+  }
   const slug=link.split('/').pop();
   status('กำลังเปิด "'+title+'" ...');
   try{
@@ -139,20 +313,20 @@ async function openChapter(i){
   const box=$('reader');box.innerHTML='กำลังโหลดภาพ...';
   try{
     status('กำลังโหลดภาพตอน...');
-    const md=await viaJina(u+'/');
-    // เก็บ ![Image](url) ด้วย string ops
+    const src=$('src').value;
     let imgs=[];
-    const ip=md.split('![Image');
-    for(let k=1;k<ip.length;k++){
-      const q=ip[k];
-      const x=q.indexOf('](');if(x<0)continue;
-      const y=q.indexOf(')',x);if(y<0)continue;
-      const s=q.slice(x+2,y).split(/\s/)[0];
-      if(s.indexOf('http')===0)imgs.push(s);
-    }
-    // ตัดโฆษณา: เอาเฉพาะภาพเนื้อเรื่อง (img.ต้นทาง / uploads เนื้อเรื่อง ไม่ใช่ banner/gif/cdend)
-    imgs=[...new Set(imgs)].filter(s=>!/cdend|banners?|gif|\.gif|logo|avatar/i.test(s));
-    if(!imgs.length)throw new Error('ไม่มีภาพในตอนนี้');
+    if(src==='dark'){
+      const html=await viaWorker(u+'/');
+      imgs=parseDarkImages(html);
+    }else if(src==='lc'){
+      const html=await viaWorker(u+'/');
+      imgs=parseLcImages(html);
+      if(!imgs.length)throw new Error('เว็บนี้โหลดภาพด้วยสคริปต์ — กดปุ่ม "เปิดที่เว็บต้นทาง" อ่านแทน');
+    }else{
+    const html=await viaWorker(u+'/');
+    imgs=parseOreImages(html);
+    } // end else (oremanga via worker)
+    if(!imgs.length)throw new Error(src==='lc'?'เว็บนี้โหลดภาพด้วยสคริปต์ — กดปุ่ม "เปิดที่เว็บต้นทาง" อ่านแทน':'ไม่มีภาพในตอนนี้');
     const prev=i>0?`<button id="btnPrev">◀ ตอนก่อนหน้า</button>`:'';
     const next=i<window._feed.length-1?`<button id="btnNext">ตอนถัดไป ▶</button>`:'';
     const opts=window._feed.map((u2,j)=>{const m2=u2.match(/-(\d+)\/?$/);return `<option value="${j}"${j===i?' selected':''}>ตอนที่ ${m2?m2[1]:j+1}</option>`}).join('');
@@ -188,7 +362,7 @@ $('btnHome').onclick=goHome;
 $('homeLink').onclick=e=>{e.preventDefault();goHome()};
 $('btnBack').onclick=()=>{$('reader').innerHTML='';$('chapters').scrollIntoView()};
 $('q').onkeydown=e=>{if(e.key==='Enter')runSearchOrPop('search')};
-$('src').onchange=()=>runSearchOrPop('pop');
-$('origin').onchange=()=>runSearchOrPop('pop');
-runSearchOrPop('pop');
+$('src').onchange=()=>{updateCats();runSearchOrPop('pop')};
+$('cat').onchange=()=>runSearchOrPop('pop');
+updateCats();runSearchOrPop('pop');
 </script></body></html>
