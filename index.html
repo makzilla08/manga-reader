@@ -14,7 +14,6 @@
 <select id="cat" title="หมวดของเว็บนั้น" style="max-width:190px"></select>
 <input id="q" placeholder="ค้นหาเรื่อง..."><button id="btnSearch">ค้นหา</button>
 <button id="btnPop">ยอดนิยม</button>
-<label style="font-size:12px"><input type="checkbox" id="hide18" checked style="padding:0"> ซ่อน 18+</label>
 <div id="pager" style="display:none"> <button id="pgPrev">◀ ก่อนหน้า</button> <b id="pgInfo"></b> <button id="pgNext">ถัดไป ▶</button></div>
 <div id="status"></div></div></header>
 <div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader"></div>
@@ -45,9 +44,9 @@ oremanga:[
  {t:'👨 Seinen',u:'/genre/seinen/'},
  {t:'👧 Shoujo',u:'/genre/shoujo/'},
  {t:'📚 Shounen',u:'/genre/shounen/'},
- {t:'🔞 Adult',u:'/genre/adult/',adult:1},
- {t:'🔞 Ecchi',u:'/genre/ecchi/',adult:1},
- {t:'🔞 Smut',u:'/genre/smut/',adult:1},
+ {t:'🔞 Adult',u:'/genre/adult/'},
+ {t:'🔞 Ecchi',u:'/genre/ecchi/'},
+ {t:'🔞 Smut',u:'/genre/smut/'},
 ],
 dark:[
  {t:'🔥 ยอดนิยม (หน้าแรก)',u:'/'},
@@ -139,12 +138,6 @@ function parseOreList(html,b){
     out.push({title,cover:'',link,genre:'',badge});
   });
   return out;
-}
-// ฟิลเตอร์ 18+: หมวด adult โดยตรง + คีย์เวิร์ดชื่อเรื่อง
-const ADULT_RE=/adult|smut|ecchi|hentai|yaoi|yuri|doujin|เลสเบี้ยน|เกย์|เซ็กส์|เสียว|18\+|r18/i;
-function isAdult(c,catAdult){
-  if(catAdult)return true;
-  return ADULT_RE.test(c.title||'');
 }
 const PAGE_SIZE=25;
 // --- dark-manga (Ts theme) ---
@@ -350,16 +343,13 @@ async function runSearchOrPop(mode,page){
       if(src==='oremanga'){
         const cat=CATS.oremanga[+$('cat').value||0]||{};
         let it=(cat.list?parseOreList(h,b):parseOreCards(h,b,badge));
-        if($('hide18').checked)it=it.filter(c=>!isAdult(c,cat.adult));
         return {it,once:!!cat.list};
       }
       else if(src==='dark'){
         let it=parseDarkCards(h,b).map(x=>({...x,badge}));
-        if($('hide18').checked)it=it.filter(c=>!isAdult(c,false));
-        return {it};
+          return {it};
       }
       let it=parseLcCards(h,b).map(x=>({...x,badge}));
-      if($('hide18').checked)it=it.filter(c=>!isAdult(c,false));
       return {it};
     };
     if(mode==='pop'){
@@ -408,7 +398,7 @@ async function runSearchOrPop(mode,page){
       }
       window._fetched=items.length;
     }
-    if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บ/หมวด หรือคำค้น — อาจโดนฟิลเตอร์ 18+ กรองหมด)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/หมวด/คำค้น');return}
+    if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บ/หมวด หรือคำค้น)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/หมวด/คำค้น');return}
     // แบ่งแสดงหน้าละ 25 เรื่อง (sub-page ในเว็บเพจเดียวกัน)
     window._items=items;window._maxPage=max;window._badge=badge;
     const subs=Math.max(1,Math.ceil(items.length/PAGE_SIZE));
@@ -534,7 +524,6 @@ $('fNext').onclick=()=>{if(window._idx>0)openChapter(window._idx-1)};
 $('fTop').onclick=()=>window.scrollTo(0,0);
 $('pgPrev').onclick=()=>pgGo(-1);
 $('pgNext').onclick=()=>pgGo(1);
-$('hide18').onchange=()=>runSearchOrPop(window._mode||'pop',1);
 $('fHome').onclick=()=>goHome();
 $('btnSearch').onclick=()=>runSearchOrPop('search');
 $('btnPop').onclick=()=>runSearchOrPop('pop');
