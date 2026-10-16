@@ -324,14 +324,14 @@ function pgGo(dir){
       renderCards(window._items.slice((sub+1)*PAGE_SIZE,(sub+1)*PAGE_SIZE+PAGE_SIZE));
       syncPager(page,window._maxPage||1);window.scrollTo(0,0);return;
     }
-    runSearchOrPop(mode,page+1);
+    runSearchOrPop(mode,(window._siteLast||page)+1);
   }else{
     if(sub>0){
       window._sub=sub-1;
       renderCards(window._items.slice((sub-1)*PAGE_SIZE,(sub-1)*PAGE_SIZE+PAGE_SIZE));
       syncPager(page,window._maxPage||1);window.scrollTo(0,0);return;
     }
-    if(page>1)runSearchOrPop(mode,page-1);
+    if((window._siteFirst||page)>1)runSearchOrPop(mode,(window._siteFirst||page)-1);
   }
 }
 async function runSearchOrPop(mode,page){
@@ -340,36 +340,70 @@ async function runSearchOrPop(mode,page){
   window._page=page;window._mode=mode;
   // ทุกแหล่งผ่าน worker (static 100% — ไม่ต้องมีเซิร์ฟเวอร์ของเรา)
   try{
-    let html,items,badge='',max=1;
+    let html,items=[],badge='',max=1;
+    // ดึงหลาย site-page สะสมให้ครบ 25 เรื่อง (บางเว็บให้แค่หน้าละ 10)
+    const parseOne=(h)=>{
+      if(src==='oremanga'){
+        const cat=CATS.oremanga[+$('cat').value||0]||{};
+        let it=(cat.list?parseOreList(h,b):parseOreCards(h,b,badge));
+        if($('hide18').checked)it=it.filter(c=>!isAdult(c,cat.adult));
+        return {it,once:!!cat.list};
+      }
+      else if(src==='dark'){
+        let it=parseDarkCards(h,b).map(x=>({...x,badge}));
+        if($('hide18').checked)it=it.filter(c=>!isAdult(c,false));
+        return {it};
+      }
+      let it=parseLcCards(h,b).map(x=>({...x,badge}));
+      if($('hide18').checked)it=it.filter(c=>!isAdult(c,false));
+      return {it};
+    };
     if(mode==='pop'){
       const c=catUrl();badge=c.label;
       const cat=CATS[$('src').value][+$('cat').value||0]||{};
       const effPage=cat.list?1:page; // manga-list A-Z อยู่หน้าเดียวทั้งหมด
       status('กำลังโหลด ['+c.label+'] หน้า '+effPage+' ...');
-      const url=pageUrl(c.url,effPage,'');
-      html=await viaWorker(url);
+      html=await viaWorker(pageUrl(c.url,effPage,''));
       max=cat.list?1:Math.max(maxPageOf(html,c.url),page);
+      items=parseOne(html).it;
+      // สะสมหน้าถัดไปจนครบ 25 (ไม่เกิน 4 หน้า)
+      let p=effPage;
+      while(items.length<PAGE_SIZE&&!cat.list&&p<max&&p-effPage<3){
+        p++;
+        try{
+          const h2=await viaWorker(pageUrl(c.url,p,''));
+          const more=parseOne(h2).it.filter(x=>!items.some(y=>y.link===x.link));
+          items=items.concat(more);
+          window._accPages=p-effPage+1;
+        }catch(e){break}
+      }
+      window._fetched=items.length;
     }else{
       const q=$('q').value.trim();
       if(!q)return status('พิมพ์ชื่อเรื่องก่อน');
       status('กำลังค้นหา "'+q+'" หน้า '+page+' ...');
       html=await viaWorker(pageUrl(b+'/',page,q));
       badge='🔍 ค้นหา';max=Math.max(maxPageOf(html,b+'/'),page);
+      items=parseOne(html).it;
+      let p=page;
+      while(items.length<PAGE_SIZE&&p<max&&p-page<3){
+        p++;
+        try{
+          const h2=await viaWorker(pageUrl(b+'/',p,q));
+          const more=parseOne(h2).it.filter(x=>!items.some(y=>y.link===x.link));
+          items=items.concat(more);
+          window._accPages=p-page+1;
+        }catch(e){break}
+      }
+      window._fetched=items.length;
     }
-    if(src==='oremanga'){
-      const cat=CATS.oremanga[+$('cat').value||0]||{};
-      items=(cat.list?parseOreList(html,b):parseOreCards(html,b,badge));
-      if($('hide18').checked)items=items.filter(c=>!isAdult(c,cat.adult));
-    }
-    else if(src==='dark')items=parseDarkCards(html,b).map(x=>({...x,badge}));
-    else items=parseLcCards(html,b).map(x=>({...x,badge}));
-    if($('hide18').checked&&src!=='oremanga')items=items.filter(c=>!isAdult(c,false));
     if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บ/หมวด หรือคำค้น — อาจโดนฟิลเตอร์ 18+ กรองหมด)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/หมวด/คำค้น');return}
     // แบ่งแสดงหน้าละ 25 เรื่อง (sub-page ในเว็บเพจเดียวกัน)
     window._items=items;window._maxPage=max;window._badge=badge;
     const subs=Math.max(1,Math.ceil(items.length/PAGE_SIZE));
-    let sub=Math.min(page-1,subs-1);if(sub<0)sub=0;
-    // ถ้าเว็บมีหลาย site-page: sub เกินจำนวน → ไป site-page ถัดไป (จัดการโดย pgNext/pgPrev)
+    let sub=0;
+    // จำ site-page ที่ดึงไปแล้ว (สะสมหลายหน้า) — ปุ่ม pager ข้ามไปหน้าที่ถูกต้อง
+    window._siteFirst=page;window._siteLast=(window._accPages?(page+window._accPages-1):page);window._accPages=0;
     status(badge+' — เจอ '+items.length+' เรื่อง (แตะปกเพื่ออ่าน)');
     renderCards(items.slice(sub*PAGE_SIZE,sub*PAGE_SIZE+PAGE_SIZE));
     window._sub=sub;window._subs=subs;
