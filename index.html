@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — เว็บไทยล้วน</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}.src{font-size:11px;background:#753;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2><a href="#" id="homeLink" style="color:#eee;text-decoration:none">📚 Manga Reader TH (เว็บไทย)</a> <small style="font-size:11px;color:#8f8">v12.1 ไทยล้วน 🇹🇭</small></h2>
+<header><h2><a href="#" id="homeLink" style="color:#eee;text-decoration:none">📚 Manga Reader TH (เว็บไทย)</a> <small style="font-size:11px;color:#8f8">v12.2 Oremanga ล้วน 🇹🇭</small></h2>
 <div>
 <button id="btnHome" style="font-size:15px">🏠 โฮม</button>
 <button id="btnBack" style="display:none">◀ กลับสารบัญ</button>
@@ -11,10 +11,8 @@
 <option value="manhwa">🇰🇷 เกาหลี Manhwa</option>
 <option value="manhua">🇨🇳 จีน Manhua</option>
 </select>
-<select id="src">
-<option value="oremanga">Oremanga (หลัก)</option>
-<option value="nekopost">NekoPost</option>
-<option value="niceoppai">NiceOppai</option>
+<select id="src" title="แหล่งเดียว: Oremanga">
+<option value="oremanga">Oremanga</option>
 </select>
 <input id="q" placeholder="ค้นหาเรื่อง..."><button id="btnSearch">ค้นหา</button>
 <button id="btnPop">ยอดนิยม</button><div id="status"></div></div></header>
