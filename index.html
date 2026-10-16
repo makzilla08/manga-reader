@@ -296,8 +296,11 @@ function catUrl(){
   return {url:base()+c.u,label:c.t};
 }
 function pageUrl(baseUrl,page,query){
-  // ทุกเว็บใช้ /page/N/ ต่อท้าย; ค้นหา WP ใช้ ?s= + /page/N/
-  if(query)return baseUrl+(page>1?'page/'+page+'/':'')+'?s='+encodeURIComponent(query);
+  // ทุกเว็บใช้ /page/N/ ต่อท้าย; ค้นหา WP ใช้ ?s= + /page/N/ (LC ต้องมี post_type=wp-manga)
+  if(query){
+    const extra=baseUrl.includes('manga-lc.net')?'&post_type=wp-manga':'';
+    return baseUrl+(page>1?'page/'+page+'/':'')+'?s='+encodeURIComponent(query)+extra;
+  }
   return baseUrl+(page>1?'page/'+page+'/':'');
 }
 function maxPageOf(html,baseUrl){
@@ -477,12 +480,21 @@ async function openChapter(i){
     }else if(src==='lc'){
       const html=await viaWorker(u+'/');
       imgs=parseLcImages(html);
-      if(!imgs.length)throw new Error('เว็บนี้โหลดภาพด้วยสคริปต์ — กดปุ่ม "เปิดที่เว็บต้นทาง" อ่านแทน');
     }else{
     const html=await viaWorker(u+'/');
     imgs=parseOreImages(html);
     } // end else (oremanga via worker)
-    if(!imgs.length)throw new Error(src==='lc'?'เว็บนี้โหลดภาพด้วยสคริปต์ — กดปุ่ม "เปิดที่เว็บต้นทาง" อ่านแทน':'ไม่มีภาพในตอนนี้');
+    if(!imgs.length){
+      // ตอนว่างที่ต้นทาง (เช่น LC บางตอน) — ข้ามไปตอนถัดไปอัตโนมัติ ไม่เกิน 5 ตอน
+      const tried=(window._skipTried||0)+1;window._skipTried=tried;
+      if(tried<=5&&i+1<window._feed.length){
+        status('ตอนนี้ว่างที่ต้นทาง — ข้ามไปตอนถัดไป...');
+        return openChapter(i+1);
+      }
+      window._skipTried=0;
+      throw new Error(src==='lc'?'เว็บนี้โหลดภาพด้วยสคริปต์ — กดปุ่ม "เปิดที่เว็บต้นทาง" อ่านแทน':'ไม่มีภาพในตอนนี้');
+    }
+    window._skipTried=0;
     const m0=u.match(/(\d+)\/?$/);
     box.innerHTML=`<div style="text-align:center;padding:4px;color:#888;font-size:12px">ตอนที่ ${m0?m0[1]:''} (${i+1}/${window._feed.length}) — ใช้แถบล่างเลื่อนตอน</div>`+
       imgs.map(s=>imgTag(s)).join('');
