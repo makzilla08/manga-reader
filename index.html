@@ -14,7 +14,7 @@
 <select id="cat" title="หมวดของเว็บนั้น" style="max-width:190px"></select>
 <input id="q" placeholder="ค้นหาเรื่อง..."><button id="btnSearch">ค้นหา</button>
 <button id="btnPop">ยอดนิยม</button>
-<div id="pager" style="display:none"> <button id="pgPrev">◀ ก่อนหน้า</button> <b id="pgInfo"></b> <button id="pgNext">ถัดไป ▶</button></div>
+<div id="pager" style="display:none"> <button id="pgPrev">◀ 25 ก่อนหน้า</button> <b id="pgInfo"></b> <button id="pgNext">25 ถัดไป ▶</button></div>
 <div id="status"></div></div></header>
 <div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader"></div>
 <script>
@@ -311,8 +311,13 @@ function maxPageOf(html,baseUrl){
 function syncPager(page,max){
   const p=$('pager');p.style.display='';
   const sub=window._sub||0,subs=window._subs||1;
-  const total=(window._items||[]).length;
-  $('pgInfo').textContent='หน้า '+page+(subs>1?' ('+(sub+1)+'/'+subs+')':'')+(max>1?' / ~'+max+' หน้าเว็บ':'')+' — '+total+' เรื่อง';
+  const shown=document.querySelectorAll('#list .card').length;
+  const a=window._siteFirst||page,b=window._siteLast||page;
+  // บรรทัดเดียว: แสดง N เรื่อง — อยู่หน้าเว็บไหน / ทั้งหมดกี่หน้า
+  let t='แสดง '+shown+' เรื่อง — หน้าเว็บ '+a+(b>a?'-'+b:'');
+  if(max>1)t+=' / ทั้งหมด ~'+max+' หน้า (~'+(max*10)+'+ เรื่อง)';
+  if(subs>1)t+=' (ชุด '+(sub+1)+'/'+subs+')';
+  $('pgInfo').textContent=t;
   $('pgPrev').disabled=(page<=1&&sub<=0);
   $('pgNext').disabled=(page>=max&&sub>=subs-1);
 }
