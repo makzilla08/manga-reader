@@ -34,7 +34,14 @@
 ## เรื่องค้าง (อัปเดต 16 ต.ค.)
 - ป้ายชาติหน้าแรกบางเรื่องไม่แม่น (การ์ด trending ไม่มี genre) — ควรดึง genre จากหน้ารายละเอียด หรือใช้หน้า manga-list
 - NekoPost/NiceOppai ยังไม่ได้เทสโครง (มีแค่ dropdown) — เทสแล้วค่อยยืนยันว่าใช้ได้
-- Jina โควต้า ~20 req/min — เปิดสารบัญ+อ่านตอนถี่ๆ อาจโดน 429
+- v12.2 (16 ต.ค. 2026): เหลือ Oremanga แหล่งเดียว (ตัด NekoPost/NiceOppai ออกจาก dropdown) — push แล้ว (7068c42)
+  - สำรวจ dark-manga: curl ต่อติด (non-www) แต่ Jina โดน Cloudflare กันบอท → ใช้ในแอปไม่ได้ (browser ยิงตรงก็ติด CORS) — พักไว้
+  - สำรวจ Manga-LC (ตัวจริง `manga-lc.net`, มี JP/KR/CN, โครง `/manga/<slug>/` + ตอน `/manga/<slug>/.../ตอนที่-N/`): ค้น/สารบัญผ่าน Jina ได้ แต่**ภาพตอนเป็น lazy `data-src` (mangaclaw.com)** Jina มองไม่เห็น → อ่านในแอปไม่ได้ ต้องมี proxy raw-HTML — พักไว้ก่อน
+- v13 (ค้าง 16 ต.ค. 2026 — user เลือก "vercel + cloudflare worker"):
+  - สร้าง `~/manga-proxy/` (worker.js + wrangler.jsonc) allowlist 7 โดเมน (oremanga/img/manga-lc/mangaclaw/dark) + CORS `*` — deploy แล้ว: `https://manga-proxy.hls-worker.workers.dev/?url=...`
+  - เทสผ่าน worker: manga-lc ตอน (เจอ `data-src` mangaclaw ครบ), dark-manga ต้องใช้ `www` (non-www 404) — `?s=` search ของ dark โดน challenge บ้างเป็นครั้งคราว
+  - โครง dark-manga (Ts theme mangareader): การ์ด `.bsx` (30) / `.listupd` (9), สารบัญ `.eplister` + `chapternum/ตอนที่ N`, genre `/genres/<slug>/`, ภาพตอนฝังใน `ts_reader.run({post_id, prevUrl, nextUrl, sources:[{images:[...]}]})`
+  - **งานค้าง**: wire worker เข้า index.html (rawHtml via worker + parser dark/lc + dropdown แหล่ง 3 เจ้า) — ยังไม่ได้เริ่ม
 
 ## เรื่องค้าง
 - user เน็ตต่อ MangaDx ไม่ได้โดยตรง ต้องพึ่ง Jina
