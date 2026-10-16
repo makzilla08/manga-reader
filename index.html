@@ -1,8 +1,10 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — เว็บไทยล้วน</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}.src{font-size:11px;background:#753;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (เว็บไทย) <small style="font-size:11px;color:#8f8">v12 ไทยล้วน 🇹🇭</small></h2>
+<header><h2><a href="#" id="homeLink" style="color:#eee;text-decoration:none">📚 Manga Reader TH (เว็บไทย)</a> <small style="font-size:11px;color:#8f8">v12.1 ไทยล้วน 🇹🇭</small></h2>
 <div>
+<button id="btnHome" style="font-size:15px">🏠 โฮม</button>
+<button id="btnBack" style="display:none">◀ กลับสารบัญ</button>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
 <option value="manga">🇯🇵 ญี่ปุ่น Manga</option>
@@ -159,11 +161,16 @@ async function openChapter(i){
     if(i>0)$('btnPrev').onclick=()=>openChapter(i-1);
     if(i<window._feed.length-1)$('btnNext').onclick=()=>openChapter(i+1);
     status('โหลดภาพสำเร็จ: '+imgs.length+' หน้า (บล็อกโฆษณาแล้ว)');
+    $('btnBack').style.display='';
     box.scrollIntoView();
   }catch(e){box.innerHTML='โหลดภาพไม่ได้: '+e.message+' <a target="_blank" rel="noopener" href="'+u+'/"><button>เปิดที่เว็บต้นทาง</button></a>';status('อ่านไม่ได้: '+e.message)}
 }
 $('btnSearch').onclick=()=>runSearchOrPop('search');
 $('btnPop').onclick=()=>runSearchOrPop('pop');
+function goHome(){$('reader').innerHTML='';$('btnBack').style.display='none';runSearchOrPop('pop');window.scrollTo(0,0)}
+$('btnHome').onclick=goHome;
+$('homeLink').onclick=e=>{e.preventDefault();goHome()};
+$('btnBack').onclick=()=>{$('reader').innerHTML='';$('chapters').scrollIntoView()};
 $('q').onkeydown=e=>{if(e.key==='Enter')runSearchOrPop('search')};
 $('src').onchange=()=>runSearchOrPop('pop');
 $('origin').onchange=()=>runSearchOrPop('pop');
