@@ -154,8 +154,10 @@ async function openChapter(i){
     if(!imgs.length)throw new Error('ไม่มีภาพในตอนนี้');
     const prev=i>0?`<button id="btnPrev">◀ ตอนก่อนหน้า</button>`:'';
     const next=i<window._feed.length-1?`<button id="btnNext">ตอนถัดไป ▶</button>`:'';
-    box.innerHTML=`<div style="text-align:center;padding:8px;position:sticky;top:60px;background:#111">${prev}<b> ${window._title} (ตอน ${i+1}/${window._feed.length}) </b>${next}</div>`+
+    const opts=window._feed.map((u2,j)=>{const m2=u2.match(/-(\d+)\/?$/);return `<option value="${j}"${j===i?' selected':''}>ตอนที่ ${m2?m2[1]:j+1}</option>`}).join('');
+    box.innerHTML=`<div style="text-align:center;padding:8px;position:sticky;top:60px;background:#111">${prev}<select id="chSel" style="max-width:170px">${opts}</select><b> (${i+1}/${window._feed.length}) </b>${next}</div>`+
       imgs.map(s=>imgTag(s)).join('');
+    $('chSel').onchange=e=>openChapter(+e.target.value);
     if(i>0)$('btnPrev').onclick=()=>openChapter(i-1);
     if(i<window._feed.length-1)$('btnNext').onclick=()=>openChapter(i+1);
     status('โหลดภาพสำเร็จ: '+imgs.length+' หน้า (บล็อกโฆษณาแล้ว)');
