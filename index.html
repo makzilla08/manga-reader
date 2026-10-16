@@ -71,16 +71,24 @@ async function viaWorker(url){
 }
 function doc(html){return new DOMParser().parseFromString(html,'text/html')}
 function absUrl(href,b){try{return new URL(href,b).toString().replace(/\/$/,'')}catch{return ''}}
-// --- oremanga (หน้าแรก .flexbox-item / หมวด .flexbox2-item) ---
+// --- oremanga (หน้าแรก .flexbox-item=ติดเทรนด์ 6 + .flexbox4-item=มาใหม่ 36 / หมวด .flexbox2-item) ---
 function parseOreCards(html,b,badge){
   const d=doc(html),out=[],seen=new Set();
-  d.querySelectorAll('.flexbox-item a[href*="/series/"], .flexbox2-item a[href*="/series/"]').forEach(a=>{
+  const badgeOf=a=>{
+    const t=a.querySelector('.type');
+    if(t){const x=t.textContent.trim().toLowerCase();
+      if(x.includes('manhwa'))return '🇰🇷 เกาหลี';
+      if(x.includes('manhua'))return '🇨🇳 จีน';
+      if(x.includes('manga'))return '🇯🇵 ญี่ปุ่น';}
+    return badge||'🌏 รวม';
+  };
+  d.querySelectorAll('.flexbox-item a[href*="/series/"], .flexbox2-item a[href*="/series/"], .flexbox4-thumb a[href*="/series/"]').forEach(a=>{
     const link=absUrl(a.getAttribute('href'),b+'/');if(!link||seen.has(link))return;seen.add(link);
     const img=a.querySelector('img');
     const cover=img?(img.getAttribute('src')||''):'';
     if(/cdend|banner|gif|logo|avatar/i.test(cover))return;
     const title=(a.getAttribute('title')||a.textContent||'').trim().slice(0,120)||link.split('/').pop();
-    out.push({title,cover,link,genre:'',badge:badge||'🌏 รวม'});
+    out.push({title,cover,link,genre:'',badge:badgeOf(a)});
   });
   return out;
 }
@@ -102,12 +110,22 @@ function parseOreImages(html){
 // --- dark-manga (Ts theme) ---
 function parseDarkCards(html,b){
   const d=doc(html),out=[],seen=new Set();
-  d.querySelectorAll('.bsx a[title], .listupd .bsx a[title]').forEach(a=>{
+  const badgeOf=a=>{
+    const root=a.closest('.uta, .bsx')||a;
+    const t=root.querySelector('.typename');
+    if(t){const x=t.textContent.trim().toLowerCase();
+      if(x.includes('manhwa'))return '🇰🇷 เกาหลี';
+      if(x.includes('manhua'))return '🇨🇳 จีน';
+      if(x.includes('manga'))return '🇯🇵 ญี่ปุ่น';}
+    return '🌏 รวม';
+  };
+  d.querySelectorAll('.bsx a[title], .listupd .bsx a[title], .uta a.series[title]').forEach(a=>{
     const link=absUrl(a.getAttribute('href'),b+'/');if(!link||seen.has(link))return;seen.add(link);
     const img=a.querySelector('img');
-    const cover=img?(img.getAttribute('src')||img.getAttribute('data-src')||''):'';
+    let cover=img?(img.getAttribute('data-wpfc-original-src')||img.getAttribute('data-src')||img.getAttribute('src')||''):'';
+    if(cover.indexOf('data:')===0)cover='';
     const title=(a.getAttribute('title')||a.textContent||'').trim()||link.split('/').pop();
-    out.push({title,cover,link,genre:'',badge:'🌏 รวม'});
+    out.push({title,cover,link,genre:'',badge:badgeOf(a)});
   });
   return out;
 }
