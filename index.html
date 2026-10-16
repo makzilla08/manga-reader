@@ -1,214 +1,171 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Manga Reader TH — บล็อกโฆษณา</title>
-<style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
-<header><h2>📚 Manga Reader TH (Ad-Block) <small style="font-size:11px;color:#8f8">v11 ข้ามตอนติด LC</small></h2>
+<title>Manga Reader TH — เว็บไทยล้วน</title>
+<style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:12px;background:#1c1c1c;position:sticky;top:0;z-index:10}input,select,button{padding:8px;margin:4px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}.src{font-size:11px;background:#753;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}</style></head><body>
+<header><h2>📚 Manga Reader TH (เว็บไทย) <small style="font-size:11px;color:#8f8">v12 ไทยล้วน 🇹🇭</small></h2>
 <div>
 <select id="origin">
 <option value="all">🌏 รวมทั้งหมด JP+KR+CN</option>
-<option value="jp">🇯🇵 ญี่ปุ่น Manga</option>
-<option value="kr">🇰🇷 เกาหลี Manhwa</option>
-<option value="cn">🇨🇳 จีน Manhua</option>
-<option value="th-site">🇹🇭 เว็บไทย: Oremanga / NiceOppai / NekoPost</option>
+<option value="manga">🇯🇵 ญี่ปุ่น Manga</option>
+<option value="manhwa">🇰🇷 เกาหลี Manhwa</option>
+<option value="manhua">🇨🇳 จีน Manhua</option>
+</select>
+<select id="src">
+<option value="oremanga">Oremanga (หลัก)</option>
+<option value="nekopost">NekoPost</option>
+<option value="niceoppai">NiceOppai</option>
 </select>
 <input id="q" placeholder="ค้นหาเรื่อง..."><button id="btnSearch">ค้นหา</button>
-<button id="btnPop">ยอดนิยม + จำนวนตอน</button><div id="status"></div></div>
-<div id="thsites" style="display:none;margin-top:8px">
-<a href="https://oremanga.net" target="_blank" rel="noopener"><button>Oremanga</button></a>
-<a href="https://niceoppai.net" target="_blank" rel="noopener"><button>NiceOppai</button></a>
-<a href="https://nekopost.net" target="_blank" rel="noopener"><button>NekoPost</button></a><br>
-<span style="font-size:12px;color:#aaa">วาง URL ตอนเพื่อดึงภาพแบบไม่มีโฆษณา:</span>
-<input id="thurl" placeholder="วาง URL ตอน" style="width:320px"><button id="btnTh">อ่านแบบบล็อกโฆษณา</button>
-</div></header>
+<button id="btnPop">ยอดนิยม</button><div id="status"></div></div></header>
 <div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader"></div>
 <script>
-const API='https://api.mangadex.org';
 const $=id=>document.getElementById(id);
 const status=m=>{$('status').textContent=m};
-const PROXIES=[
- u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
- u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
- u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u),
- u=>'https://test.cors.workers.dev/?'+u,
- u=>'https://api-mangadex-org.translate.goog/manga'+u.slice(u.indexOf('/manga')+6)+'&_x_tr_sl=en&_x_tr_tl=th&_x_tr_hl=th',
- u=>'https://cors.eu.org/'+u,
- u=>'https://thingproxy.freeboard.io/fetch/'+u
-];
-// img tag กัน hotlink/CORS: พังแล้วลองผ่าน weserv อัตโนมัติ
+const BASE={oremanga:'https://www.oremanga.net',nekopost:'https://www.nekopost.net',niceoppai:'https://www.niceoppai.net'};
 const IMGERR=`onerror="this.onerror=null;this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.src.replace(/^https?:\\/\\//,''))"`;
 function imgTag(s){return `<img loading="lazy" src="${s}" referrerpolicy="no-referrer" ${IMGERR}>`}
-function mdxTr(url){
-  // MangaDex API ผ่าน Google Translate proxy (Google ไม่โดนบล็อก + ส่ง CORS ให้)
-  const path=url.slice(url.indexOf('api.mangadex.org')+16);
-  return 'https://api-mangadex-org.translate.goog'+path+(path.includes('?')?'&':'?')+'_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en';
+function base(){return BASE[$('src').value]||BASE.oremanga}
+async function viaJina(url){
+  // ดึงผ่าน Jina Reader (มี CORS + ไม่โดนบล็อก) ได้ markdown กลับมา
+  const r=await fetch('https://r.jina.ai/'+url);
+  if(!r.ok)throw new Error('Jina '+r.status);
+  return await r.text();
 }
-async function j(url){
-  // 1. Jina Reader proxy (ส่ง CORS header ให้เบราว์เซอร์ + ไม่โดนบล็อก) — ตัด markdown header ทิ้งเหลือ JSON
+// แยกโฆษณาพนันออก: เอาเฉพาะลิงก์ /series/ + ปกจริง (ไม่ใช่ banner/cdend/gif)
+function parseCards(md){
+  // แยกด้วยการตัด string ล้วน (เลี่ยง regex literal เพี้ยนในบางเบราว์เซอร์)
+  const out=[],seen=new Set();
+  const parts=md.split('![Image');
+  for(let k=1;k<parts.length;k++){
+    const p=parts[k];
+    // ปก: ](coverURL)
+    let a=p.indexOf('](');if(a<0)continue;
+    let b=p.indexOf(')',a);if(b<0)continue;
+    const cover=p.slice(a+2,b);
+    if(cover.indexOf('http')!==0)continue;
+    if(/cdend|banner|gif|logo|avatar/i.test(cover))continue;
+    // ลิงก์ series: หา ]( ... /series/ ... ) ถัดไป
+    const si=p.indexOf('/series/',b);if(si<0)continue;
+    let ls=p.lastIndexOf('](',si);if(ls<0)continue;
+    let le=p.indexOf(')',si);if(le<0)continue;
+    let link=p.slice(ls+2,le).split(/\s/)[0].replace(/\/$/,'');
+    if(seen.has(link))continue;
+    seen.add(link);
+    const mid=p.slice(b,ls);
+    const gm=mid.match(/\/genre\/([a-z]+)/i);
+    // ชื่อ: จาก "title" ในลิงก์ หรือข้อความระหว่าง
+    let title='';
+    const qm=p.slice(ls,le+1).match(/"([^"]+)"/);
+    if(qm)title=qm[1].trim();
+    if(!title){
+      const tm=mid.replace(/\[.*?\)/g,'').trim().match(/^[\d.\s]*([^[\]]{3,80})/);
+      if(tm)title=tm[1].trim();
+    }
+    if(!title||/^Image\s*\d*$/i.test(title))title=link.split('/').pop();
+    out.push({title,cover,link,genreInline:gm?gm[1].toLowerCase():''});
+  }
+  return out;
+}
+function genreOf(md,link){
+  // หาบรรทัด genre ใต้การ์ด (เช่น [Action](.../genre/action/), [Manhwa](...))
+  const i=md.indexOf(link);
+  if(i<0)return '';
+  const seg=md.slice(i,i+1200);
+  const gs=[...seg.matchAll(/\[([A-Za-zก-๙ ]+)\]\(https:[^)]+\/genre\/([^)]+?)\)/g)].map(x=>x[2].toLowerCase());
+  return gs.join(' ');
+}
+function originBadge(g){
+  if(g.includes('manhwa'))return '🇰🇷 เกาหลี';
+  if(g.includes('manhua'))return '🇨🇳 จีน';
+  if(g.includes('manga'))return '🇯🇵 ญี่ปุ่น';
+  return '🌏 รวม';
+}
+async function runSearchOrPop(mode){
+  const b=base();
   try{
-    const r=await fetch('https://r.jina.ai/'+url);
-    if(r.ok){const t=await r.text();const i=t.indexOf('{');if(i>=0)return JSON.parse(t.slice(i))}
-  }catch(e){}
-  // 2. Google Translate proxy
-  try{const r=await fetch(mdxTr(url));if(r.ok){const t=await r.text();if(t.startsWith('{'))return JSON.parse(t)}}catch(e){}
-  // 3. proxy สำรอง
-  for(const p of PROXIES){try{const r=await fetch(p(url));if(r.ok){const t=await r.text();if(t.startsWith('{'))return JSON.parse(t)}}catch(e){}}
-  throw new Error('fetch failed');
-}
-function langParam(){const v=$('origin').value;if(v==='jp')return '&originalLanguage[]=ja';if(v==='kr')return '&originalLanguage[]=ko';if(v==='cn')return '&originalLanguage[]=zh';return ''} // all = no filter
-function cover(m){const c=(m.relationships||[]).find(r=>r.type==='cover_art');const f=c?.attributes?.fileName;return f?`https://uploads.mangadex.org/covers/${m.id}/${f}.256.jpg`:''}
-function titleOf(m){return m.attributes.title.en||Object.values(m.attributes.title||{x:'?'})[0]}
-async function alSearch(q,sort,page,perPage){
-  const query=`query($s:String,$sort:[MediaSort],$pg:Int,$pp:Int){Page(page:$pg,perPage:$pp){pageInfo{hasNextPage}media(search:$s,type:MANGA,sort:$sort){id title{english romaji native}coverImage{large}chapters volumes countryOfOrigin format averageScore}}}`;
-  const r=await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,variables:{s:q||undefined,sort:sort||['SEARCH_MATCH'],pg:page||1,pp:perPage||50}})});
-  if(!r.ok)throw new Error('AniList '+r.status);
-  const pg=(await r.json()).data.Page;
-  return {media:pg.media,hasNext:pg.pageInfo.hasNextPage};
-}
-function alCountry(m){return m.countryOfOrigin==='JP'?'🇯🇵 ญี่ปุ่น':m.countryOfOrigin==='KR'?'🇰🇷 เกาหลี':m.countryOfOrigin==='CN'?'🇨🇳 จีน':'🌏 '+(m.countryOfOrigin||'?')}
-function alTitle(m){return m.title.english||m.title.romaji||m.title.native}
-let curQ='',curSort=['TRENDING_DESC'],curPage=1,curHasNext=false,accum=[];
-async function loadPopular(){
-  curQ='';curSort=['TRENDING_DESC'];curPage=1;accum=[];
-  await runAL('กำลังโหลดยอดนิยม (AniList)...');
-}
-async function searchManga(){
-  const q=$('q').value.trim();if(!q)return status('พิมพ์ชื่อเรื่องก่อน (ไทยหรืออังกฤษก็ได้ เช่น โซโล่ / Solo Leveling / One Piece)');
-  curQ=q;curSort=['SEARCH_MATCH'];curPage=1;accum=[];
-  await runAL('กำลังค้นหา "'+q+'" ...');
-}
-async function loadMore(){if(!curHasNext)return;curPage++;await runAL('กำลังโหลดเพิ่ม หน้า '+curPage+' ...',true)}
-async function runAL(msg,append){
-  try{
-    status(msg);
-    const {media,hasNext}=await alSearch(curQ||undefined,curSort,curPage,50);
-    let f=media;
+    let md,items;
+    if(mode==='pop'){
+      status('กำลังโหลดยอดนิยมจาก '+$('src').selectedOptions[0].text+' ...');
+      md=await viaJina(b+'/');
+    }else{
+      const q=$('q').value.trim();
+      if(!q)return status('พิมพ์ชื่อเรื่องก่อน เช่น โซโล่ / Solo Leveling / One Piece');
+      status('กำลังค้นหา "'+q+'" ...');
+      md=await viaJina(b+'/?s='+encodeURIComponent(q));
+    }
+    items=parseCards(md);
+    // เติม genre + กรองตามชาติ
     const v=$('origin').value;
-    if(v==='jp')f=media.filter(m=>m.countryOfOrigin==='JP');
-    if(v==='kr')f=media.filter(m=>m.countryOfOrigin==='KR');
-    if(v==='cn')f=media.filter(m=>m.countryOfOrigin==='CN');
-    curHasNext=hasNext;
-    accum=append?accum.concat(f):f;
-    status(`${curQ?'ค้นหา "'+curQ+'"':"ยอดนิยม"} — รวม ${accum.length} เรื่อง${hasNext?' (มีอีก กดโหลดเพิ่ม)':''}`);
-    renderAL(accum,hasNext);
+    items=items.map(c=>({...c,genre:c.genreInline||genreOf(md,c.link+'/'),badge:''}));
+    items.forEach(c=>c.badge=originBadge(c.genre));
+    if(v!=='all')items=items.filter(c=>c.genre.includes(v));
+    if(!items.length){$('list').innerHTML='<p>ไม่เจอเรื่อง (ลองเปลี่ยนเว็บต้นทาง หรือคำค้น)</p>';status('ไม่เจอ — ลองเปลี่ยนเว็บ/คำค้น');return}
+    status((mode==='pop'?'ยอดนิยม':'ค้นหา')+' — เจอ '+items.length+' เรื่อง (แตะปกเพื่ออ่าน)');
+    renderCards(items);
   }catch(e){status('โหลดไม่ได้: '+e.message+' — ลองกดอีกครั้ง')}
 }
-function renderAL(media,hasNext){
+function renderCards(items){
   const el=$('list');el.innerHTML='';$('chapters').innerHTML='';
-  if(!media.length){el.innerHTML='<p>ไม่เจอเรื่อง</p>';return}
-  for(const m of media){
-    const ch=m.chapters?m.chapters+' ตอน':m.volumes?m.volumes+' เล่ม':'กำลังตีพิมพ์ ★'+(m.averageScore||'?');
+  for(const c of items){
     const d=document.createElement('div');d.className='card';
-    d.innerHTML=`<img loading="lazy" src="${m.coverImage.large}" referrerpolicy="no-referrer"><div><span class="badge">${alCountry(m)}</span><span class="badge">${ch}</span><br>${alTitle(m)}</div>`;
-    d.onclick=()=>readNow(alTitle(m));
+    d.innerHTML=`<img loading="lazy" src="${c.cover}" referrerpolicy="no-referrer" ${IMGERR}><div><span class="badge">${c.badge}</span><span class="src">${$('src').value}</span><br>${c.title}</div>`;
+    d.onclick=()=>openSeries(c.link,c.title);
     el.appendChild(d);
   }
-  if(hasNext){const b=document.createElement('button');b.textContent='⬇ โหลดเพิ่ม (อีก 50 เรื่อง)';b.style.cssText='margin:12px;padding:12px;font-size:15px';b.onclick=loadMore;el.appendChild(b)}
 }
-function readable(c){const a=c.attributes||{};return !a.externalUrl&&(a.pages===undefined||a.pages>0)}
-async function readNow(t){
-  // คลิกเดียวอ่านในเว็บ: โชว์แผงก่อน แล้วเปิดตอนล่าสุดทันทีที่หาไฟล์เจอ
-  status('กำลังเปิด "'+t+'" ...');
-  const url=`${API}/manga?limit=3&title=${encodeURIComponent(t)}&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&order[relevance]=desc`;
+async function openSeries(link,title){
+  const b=base();
+  const slug=link.split('/').pop();
+  status('กำลังเปิด "'+title+'" ...');
   try{
-    status('กำลังเปิด "'+t+'" ...');
-    const d=await j(url);
-    if(!d.data||!d.data.length)throw new Error('no data');
-    const id=d.data[0].id;
-    const rawF=await j(`${API}/manga/${id}/feed?limit=20&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
-    const f={data:(rawF.data||[]).filter(readable),total:rawF.total};
-    if(!f.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>เรื่องนี้ติดลิขสิทธิ์บน MangaDx (เช่น Solo Leveling → WebNovel) ไม่มีภาพฟรี — ใช้ปุ่มเว็บไทยด้านล่าง</p>`+thLinks(t);status('ติดลิขสิทธิ์ — ใช้ลิงก์เว็บไทย');return}
-    window._feed=f.data;window._title=t;
+    const md=await viaJina(link+'/');
+    // หาลิงก์ตอน: /<slug>/<slug>-N/
+    const re=new RegExp('https?://[^)\\s]+?/'+slug.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'-'+'[^)\\s/]*/?','g');
+    const found=[...new Set([...md.matchAll(re)].map(x=>x[0].replace(/\/$/,'')))];
+    // เรียงตามเลขตอน
+    const num=u=>{const m=u.match(/-(\d+)\/?$/);return m?+m[1]:-1};
+    found.sort((a,c)=>num(c)-num(a));
+    if(!found.length){$('chapters').innerHTML=`<h3>${title}</h3><p>ไม่เจอสารบัญ — <a target="_blank" rel="noopener" href="${link}/"><button>เปิดที่เว็บต้นทาง</button></a></p>`;status('ไม่เจอตอน');return}
+    window._feed=found;window._title=title;
+    $('chapters').innerHTML=`<h3>${title} — ${found.length} ตอน (แตะเพื่ออ่าน ไม่มีโฆษณา)</h3>`+
+      found.map((u,i)=>{const m=u.match(/-(\d+)\/?$/);return `<button data-ch="${i}">ตอนที่ ${m?m[1]:'?'}</button>`}).join('')+
+      `<div style="margin-top:8px"><a target="_blank" rel="noopener" href="${link}/"><button>เปิดที่เว็บต้นทาง</button></a></div>`;
+    $('chapters').querySelectorAll('button[data-ch]').forEach(x=>x.onclick=()=>openChapter(+x.dataset.ch));
     openChapter(0);
-    // สารบัญไว้เปลี่ยนตอนด้านล่าง
-    const nav=`<h3>${t} — ตอนล่าสุดถึงเก่ากว่า (แตะเพื่อเปลี่ยนตอน)</h3>`+thLinks(t)+(f.data||[]).map((c,i)=>`<button data-ch="${i}">Ch.${c.attributes.chapter||'?'} ${((c.attributes||{}).title||'').slice(0,30)} [${c.attributes.translatedLanguage}]</button>`).join('');
-    $('chapters').innerHTML=nav;
-    $('chapters').querySelectorAll('button[data-ch]').forEach(b=>b.onclick=()=>openChapter(+b.dataset.ch));
-  }catch(e){
-    $('chapters').innerHTML=`<h3>${t}</h3><p>เปิดไม่ได้: ${e.message}</p>`+thLinks(t);
-    status('เปิดอ่านตรงไม่ได้ — กดปุ่มเว็บไทยด้านบน');
-  }
+  }catch(e){$('chapters').innerHTML=`<h3>${title}</h3><p>เปิดไม่ได้: ${e.message}</p><a target="_blank" rel="noopener" href="${link}/"><button>เปิดที่เว็บต้นทาง</button></a>`}
 }
 async function openChapter(i){
-  window._idx=i;
-  const c=window._feed[i];
-  await read(c.id);
-  const prev=i>0?`<button id="btnPrev">◀ ตอนก่อนหน้า</button>`:'';
-  const next=i<window._feed.length-1?`<button id="btnNext">ตอนถัดไป ▶</button>`:'';
-  $('reader').insertAdjacentHTML('afterbegin',`<div style="text-align:center;padding:8px;position:sticky;top:60px;background:#111">${prev}<b> ${window._title} Ch.${c.attributes.chapter||'?'} (${i+1}/${window._feed.length}) </b>${next}</div>`);
-  if(i>0)$('btnPrev').onclick=()=>openChapter(i-1);
-  if(i<window._feed.length-1)$('btnNext').onclick=()=>openChapter(i+1);
-  window.scrollTo(0,0);
-}
-function renderList(items){
-  const el=$('list');el.innerHTML='';$('chapters').innerHTML='';
-  if(!items.length){el.innerHTML='<p>ไม่เจอเรื่อง</p>';return}
-  for(const m of items){
-    const langs=(m.attributes.availableTranslatedLanguages||[]).length;
-    const d=document.createElement('div');d.className='card';
-    d.innerHTML=`<img loading="lazy" src="${cover(m)}" referrerpolicy="no-referrer"><div><span class="badge">${m.attributes.originalLanguage||'?'}</span><span class="badge">${langs} ภาษา</span><br>${titleOf(m)}</div>`;
-    d.onclick=()=>loadChapters(m.id,titleOf(m));el.appendChild(d);
-  }
-}
-function thLinks(t){
-  const q=encodeURIComponent(t);
-  return `<div style="margin:8px 0">อ่านเรื่องนี้ที่:
-  <a target="_blank" rel="noopener" href="https://oremanga.net/?s=${q}"><button>Oremanga</button></a>
-  <a target="_blank" rel="noopener" href="https://www.niceoppai.net/?s=${q}"><button>NiceOppai</button></a>
-  <a target="_blank" rel="noopener" href="https://nekopost.net/?s=${q}"><button>NekoPost</button></a>
-  <a target="_blank" rel="noopener" href="https://mangadex.org/search?q=${q}"><button>MangaDex</button></a></div>`;
-}
-async function loadChapters(id,t){
+  const u=window._feed[i];window._idx=i;
+  const box=$('reader');box.innerHTML='กำลังโหลดภาพ...';
   try{
-    status('กำลังโหลดสารบัญ...');
-    const rd=await j(`${API}/manga/${id}/feed?limit=100&order[chapter]=desc&translatedLanguage[]=en&translatedLanguage[]=th&translatedLanguage[]=ja&translatedLanguage[]=ko&translatedLanguage[]=zh&translatedLanguage[]=zh-hk`);
-    const d={data:(rd.data||[]).filter(readable),total:rd.total};
-    if(!d.data||!d.data.length){$('chapters').innerHTML=`<h3>${t}</h3><p>เรื่องนี้ติดลิขสิทธิ์บน MangaDx ไม่มีภาพฟรี</p>`+thLinks(t);status('ไม่มีตอนให้อ่านบน MangaDx — ใช้ลิงก์เว็บไทย');return}
-    $('chapters').innerHTML=`<h3>${t} — ${d.total} chapters (แสดง ${d.data.length})</h3>`+thLinks(t)+d.data.map(c=>`<button data-ch="${c.id}">Ch.${c.attributes.chapter||'?'} ${c.attributes.title||''} [${c.attributes.translatedLanguage}]</button>`).join('');
-    $('chapters').querySelectorAll('button[data-ch]').forEach(b=>b.onclick=()=>read(b.dataset.ch));
-    status('กดปุ่มตอนเพื่ออ่าน (ไม่มีโฆษณา)');
-    window.scrollTo(0,0);
-  }catch(e){$('chapters').innerHTML=`<h3>${t}</h3><p>โหลดสารบัญไม่ได้: ${e.message}</p>`+thLinks(t);status('โหลดสารบัญไม่ได้ — ใช้ลิงก์เว็บไทยด้านบน')}
-}
-async function read(chId,retry){
-  const box=$('reader');if(!retry)box.innerHTML='กำลังโหลดภาพ...';
-  try{
-    status('กำลังโหลดภาพ...');
-    const m=await j(`${API}/at-home/server/${chId}`);const ch=await j(`${API}/chapter/${chId}`);
-    const h=m.baseUrl,hash=ch.data&&ch.data.attributes.hash,files=ch.data&&(ch.data.attributes.dataSaver||ch.data.attributes.data);
-    if(!h||!hash||!files||!files.length){
-      // ข้ามไปตอนถัดไปใน feed อัตโนมัติ (สูงสุด 5 ตอน)
-      const feed=window._feed||[];const idx=(retry&&retry.idx!==undefined)?retry.idx:(window._idx||0);
-      const n=(retry&&retry.n)||0;
-      if(feed.length&&idx+1<feed.length&&n<5){window._idx=idx+1;return read(feed[idx+1].id,{idx:idx+1,n:n+1})}
-      throw new Error('ตอนนี้ไม่มีภาพฟรีบน MangaDx (ติดลิขสิทธิ์/ลิงก์ไปเว็บอื่น) — ลองตอนอื่นหรือเว็บไทย');
+    status('กำลังโหลดภาพตอน...');
+    const md=await viaJina(u+'/');
+    // เก็บ ![Image](url) ด้วย string ops
+    let imgs=[];
+    const ip=md.split('![Image');
+    for(let k=1;k<ip.length;k++){
+      const q=ip[k];
+      const x=q.indexOf('](');if(x<0)continue;
+      const y=q.indexOf(')',x);if(y<0)continue;
+      const s=q.slice(x+2,y).split(/\s/)[0];
+      if(s.indexOf('http')===0)imgs.push(s);
     }
-    const q=ch.data.attributes.dataSaver?'/data-saver/':'/data/';
-    box.innerHTML='<h3>กำลังอ่าน (ไม่มีโฆษณา 100%)</h3>'+files.map(f=>imgTag(`${h}${q}${hash}/${f}`)).join('');
-    status('โหลดภาพสำเร็จ: '+files.length+' หน้า');
+    // ตัดโฆษณา: เอาเฉพาะภาพเนื้อเรื่อง (img.ต้นทาง / uploads เนื้อเรื่อง ไม่ใช่ banner/gif/cdend)
+    imgs=[...new Set(imgs)].filter(s=>!/cdend|banners?|gif|\.gif|logo|avatar/i.test(s));
+    if(!imgs.length)throw new Error('ไม่มีภาพในตอนนี้');
+    const prev=i>0?`<button id="btnPrev">◀ ตอนก่อนหน้า</button>`:'';
+    const next=i<window._feed.length-1?`<button id="btnNext">ตอนถัดไป ▶</button>`:'';
+    box.innerHTML=`<div style="text-align:center;padding:8px;position:sticky;top:60px;background:#111">${prev}<b> ${window._title} (ตอน ${i+1}/${window._feed.length}) </b>${next}</div>`+
+      imgs.map(s=>imgTag(s)).join('');
+    if(i>0)$('btnPrev').onclick=()=>openChapter(i-1);
+    if(i<window._feed.length-1)$('btnNext').onclick=()=>openChapter(i+1);
+    status('โหลดภาพสำเร็จ: '+imgs.length+' หน้า (บล็อกโฆษณาแล้ว)');
     box.scrollIntoView();
-  }catch(e){box.innerHTML='โหลดภาพไม่ได้: '+e.message+' (เซิร์ฟเวอร์ MangaDx อาจบล็อกเน็ตคุณ) — เปิดอ่านที่เว็บไทยแทน';status('อ่านไม่ได้: '+e.message)}
+  }catch(e){box.innerHTML='โหลดภาพไม่ได้: '+e.message+' <a target="_blank" rel="noopener" href="'+u+'/"><button>เปิดที่เว็บต้นทาง</button></a>';status('อ่านไม่ได้: '+e.message)}
 }
-async function loadThUrl2(){
-  const a=$('chapUrl')?$('chapUrl').value.trim():'';const b=$('thurl')?$('thurl').value.trim():'';const url=a||b;
-  if(!url)return alert('วาง URL ตอนก่อน');
-  const box=$('reader');box.innerHTML='กำลังดึง (บล็อกโฆษณา)...';box.scrollIntoView();
-  for(const p of PROXIES){try{
-    const html=await (await fetch(p(url))).text();
-    if(!html||html.length<500)continue;
-    const doc=new DOMParser().parseFromString(html,'text/html');
-    doc.querySelectorAll('script,iframe,.ads,.advertisement').forEach(e=>e.remove());
-    let imgs=[...doc.querySelectorAll('.reading-content img, .read-container img, #readerarea img, .entry-content img')];
-    if(!imgs.length)imgs=[...doc.querySelectorAll('img')];
-    imgs=imgs.map(i=>i.src||i.dataset.src||i.dataset.original).filter(s=>s&&s.startsWith('http')&&!s.includes('logo')&&!s.includes('banner')&&!s.includes('avatar'));
-    const uniq=[...new Set(imgs)];
-    if(uniq.length){box.innerHTML=`<h3>บล็อกโฆษณาแล้ว: ${uniq.length} ภาพ</h3>`+uniq.map(s=>imgTag(s)).join('');status('ดึงภาพสำเร็จ');return}
-  }catch(e){}}
-  box.innerHTML='ดึงภาพในแอปไม่ได้ (เว็บปลายทางกันไว้) — กดเปิดอ่านในแท็บใหม่แทน';window.open(url,'_blank');
-}
-function loadThUrl(){$('chapUrl');loadThUrl2();}
-$('btnSearch').onclick=searchManga;
-$('btnPop').onclick=loadPopular;
-$('btnTh').onclick=loadThUrl;
-$('q').onkeydown=e=>{if(e.key==='Enter')searchManga()};
-$('origin').onchange=()=>{$('thsites').style.display=$('origin').value==='th-site'?'block':'none';loadPopular()};
-loadPopular();
+$('btnSearch').onclick=()=>runSearchOrPop('search');
+$('btnPop').onclick=()=>runSearchOrPop('pop');
+$('q').onkeydown=e=>{if(e.key==='Enter')runSearchOrPop('search')};
+$('src').onchange=()=>runSearchOrPop('pop');
+$('origin').onchange=()=>runSearchOrPop('pop');
+runSearchOrPop('pop');
 </script></body></html>
