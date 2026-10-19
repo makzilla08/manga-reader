@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manga Reader TH — เว็บไทยล้วน</title>
 <style>body{font-family:system-ui;margin:0;background:#111;color:#eee}header{padding:4px 8px;background:#1c1c1c;position:sticky;top:0;z-index:10}header h2{font-size:14px;margin:2px 0}header h2 small{font-size:10px}input,select,button{padding:5px 6px;margin:2px;font-size:13px;border-radius:8px;border:1px solid #333;background:#222;color:#eee}button{cursor:pointer}button:hover{background:#333}#status{font-size:13px;color:#8f8;margin:4px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}.card{background:#1c1c1c;border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;height:200px;object-fit:cover;background:#000}.card div{padding:6px;font-size:13px}#reader img{max-width:800px;width:100%;display:block;margin:0 auto;background:#000}.badge{font-size:11px;background:#2a7;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}.src{font-size:11px;background:#753;color:#fff;border-radius:6px;padding:2px 6px;margin-right:4px}#floatNav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(20,20,20,.95);border-top:1px solid #333;padding:8px;text-align:center}body.reading{padding-bottom:60px}body.reading header{display:none}</style></head><body>
-<div id="floatNav">🏠 <button id="fHome">โฮม</button> <button id="fPrev">◀ ตอนที่แล้ว</button> <select id="fSel" style="max-width:170px"></select> <button id="fNext">ตอนต่อไป ▶</button> <button id="fTop">⬆</button></div>
+<div id="floatNav">🏠 <button id="fHome">โฮม</button> <button id="fPrev">◀ ตอนที่แล้ว</button> <select id="fSel" style="max-width:170px"></select> <button id="fNext">ตอนต่อไป ▶</button> <button id="fTop">⬆ บนสุด</button></div>
 <header><h2><a href="#" id="homeLink" style="color:#eee;text-decoration:none">📚 Manga Reader TH (เว็บไทย)</a> <small style="font-size:11px;color:#8f8">v13 worker 3 แหล่ง 🇹🇭</small></h2>
 <div>
 <button id="btnHome" style="font-size:15px">🏠 โฮม</button>
@@ -530,7 +530,7 @@ function syncFloat(i){
 $('fSel').onchange=e=>openChapter(+e.target.value);
 $('fPrev').onclick=()=>{if(window._idx<window._feed.length-1)openChapter(window._idx+1)};
 $('fNext').onclick=()=>{if(window._idx>0)openChapter(window._idx-1)};
-$('fTop').onclick=()=>window.scrollTo(0,0);
+$('fTop').onclick=()=>window.scrollTo({top:$('reader').getBoundingClientRect().top+window.scrollY,behavior:'smooth'});
 $('pgPrev').onclick=()=>pgGo(-1);
 $('pgNext').onclick=()=>pgGo(1);
 $('fHome').onclick=()=>goHome();
