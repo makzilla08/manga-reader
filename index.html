@@ -16,7 +16,7 @@
 <button id="btnPop">ยอดนิยม</button>
 <div id="pager" style="display:none"> <button id="pgPrev">◀ 25 ก่อนหน้า</button> <b id="pgInfo"></b> <button id="pgNext">25 ถัดไป ▶</button></div>
 <div id="status"></div></div></header>
-<div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader"></div>
+<div id="list" class="grid"></div><div id="chapters" style="padding:12px"></div><div id="reader" style="overflow-anchor:none"></div>
 <script>
 const $=id=>document.getElementById(id);
 const status=m=>{$('status').textContent=m};
@@ -72,7 +72,7 @@ lc:[
  {t:'🥋 Martial Arts',u:'/manga-genre/martial-arts/'},
 ]};
 const IMGERR=`onerror="this.onerror=null;this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.src.replace(/^https?:\\/\\//,''))"`;
-function imgTag(s){return `<img loading="lazy" src="${s}" referrerpolicy="no-referrer" ${IMGERR}>`}
+function imgTag(s,loading='lazy'){return `<img loading="${loading}" src="${s}" referrerpolicy="no-referrer" ${IMGERR}>`}
 function base(){return BASE[$('src').value]||BASE.oremanga}
 async function viaJina(url){
   // ดึงผ่าน Jina Reader (มี CORS + ไม่โดนบล็อก) ได้ markdown กลับมา
@@ -483,6 +483,7 @@ async function openSeries(link,title){
 async function openChapter(i){
   const u=window._feed[i];window._idx=i;
   const box=$('reader');box.innerHTML='กำลังโหลดภาพ...';
+  window.scrollTo(0,box.getBoundingClientRect().top+window.scrollY);
   try{
     status('กำลังโหลดภาพตอน...');
     const src=$('src').value;
@@ -510,11 +511,11 @@ async function openChapter(i){
     window._skipTried=0;
     const m0=u.match(/(\d+)\/?$/);
     box.innerHTML=`<div style="text-align:center;padding:4px;color:#888;font-size:12px">ตอนที่ ${m0?m0[1]:''} (${i+1}/${window._feed.length}) — ใช้แถบล่างเลื่อนตอน</div>`+
-      imgs.map(s=>imgTag(s)).join('');
+      imgs.map((s,index)=>imgTag(s,index===0?'eager':'lazy')).join('');
     syncFloat(i);
     status('โหลดภาพสำเร็จ: '+imgs.length+' หน้า (บล็อกโฆษณาแล้ว)');
     $('btnBack').style.display='';
-    box.scrollIntoView();
+    window.scrollTo(0,box.getBoundingClientRect().top+window.scrollY);
   }catch(e){box.innerHTML='โหลดภาพไม่ได้: '+e.message+' <a target="_blank" rel="noopener" href="'+u+'/"><button>เปิดที่เว็บต้นทาง</button></a>';status('อ่านไม่ได้: '+e.message)}
 }
 function syncFloat(i){
