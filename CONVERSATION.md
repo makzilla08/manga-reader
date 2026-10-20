@@ -52,3 +52,20 @@
 - user เน็ตต่อ MangaDx ไม่ได้โดยตรง ต้องพึ่ง Jina
 - user เจอแคชเก่าบ่อย → ให้เปิดแท็บไม่ระบุตัวตน / Ctrl+Shift+R, เช็กป้ายเวอร์ชันที่หัวเว็บ
 - error ล่าสุดที่ user รายงาน: "เปิดอ่านตรงไม่ได้" (ข้อความเก่า = ยังโหลดไฟล์เก่า)
+
+## v14 (20 ต.ค. 2026): เพิ่ม 3 แหล่งเว็บไทย — Murim-Manga / MangaKimi / Niceoppai
+- worker (`~/manga-proxy/worker.js`) allowlist เพิ่ม murim-manga.com, mangakimi.com, niceoppai.net, noppic.com, webtoon168.com + Cache API (ภาพ 1 วัน / HTML 5 นาที) — deploy แล้ว
+- murim + kimi ใช้ `ts_reader.run({...images})` เหมือน dark-manga → ใช้ `parseDarkImages` ต่อ; การ์ด `.bsx` + `.type` (อ่าน badge จาก className ไม่ใช่ text เพราะ span ว่าง)
+- murim: หมวด `/genres/manhwa|martial-arts|action|…/`, สารบัญ `#chapterlist a` (URL ราก `/slug-ตอนที่-N/`)
+- kimi: หมวด `/manga/` (40/หน้า) + `/genres/manga|manhwa|manhua/`; manhua ~227 หน้า; ตอนเป็น `/slug-N/`; ค้น `?s=&post_type=wp-manga` ได้
+- nice: theme custom `.fcard` / `.cover__img` (ต้อง `encodeURI` เพราะชื่อไฟล์มี空格) / สารบัญ `/Slug/N/` / ภาพ `imageN.niceoppai.net` (301 → noppic.com เบราว์เซอร์ตามเอง); ค้นไม่ได้เพราะฟอร์มเป็น POST → ใช้หมวด "ทั้งหมด (อัปเดตล่าสุด)" 276 หน้าแทน
+- แก้ race: `window._runId` กันผลลัพธ์เก่ามาทับตอนสลับเว็บ (ต้นเหตุอาการ "เจอแคชเก่า")
+- pager: ถ้าหน้าสุดท้ายของเว็บมีแค่ลิงก์ "ถัดไป" → ต่อได้ไม่ตัน (`max=page+1` เมื่อได้ครบ 25)
+- เทสจริง Playwright: murim 25 เรื่อง/117 ตอน/31 ภาพ · kimi 40/3/14 · nice 32/44/4 (ภาพโหลดครบ)
+
+## v15 (20 ต.ค. 2026): แก้ภาพตอน Manga-LC ให้อ่านได้จริง
+- สาเหตุเดิม: `parseLcImages` กรองเฉพาะลิงก์ที่มีคำว่า `mangaclaw|manga-lc|uploads|chapter` → ภาพ LC อยู่ที่ `images-delivery.com/<hash32>.webp` เลยถูกทิ้งทั้งหมด แอปจึงขึ้น "เว็บนี้โหลดภาพด้วยสคริปต์"
+- แก้: อ่านเฉพาะ scope `.reading-content` / `#readerarea`, รับ `img[data-src]` ทุก hosts, ตัด gif/แบนเนอร์/site-asset แล้วถ้าเจอรูปแบบ `images-delivery.com/[0-9a-f]{16,}.(webp|jpg|png)` ให้ใช้ชุดนั้น (fallback เดิมสำหรับ mangaclaw/chapter)
+- เพิ่ม guard `_runId` ใน `openSeries` / `openChapter` กันหน้าโหลดเก่ามาทับหลังสลับแหล่ง (อ่านค่า status/รายการผิด)
+- เทส Playwright: LC "I Offered Kimchi Ramen to the Gods ตอนที่ 1" = 62/62 ภาพโหลดครบ · mietemasu ตอน 33 = 24/24 (ตอน 34 ว่างจริงที่ต้นทาง → auto-skip) · ไม่ regress: murim 31 · kimi 14 · nice 4 ภาพครบ
+- หมายเหตุ: LC บางตอนเป็นเทสต์/โฆษณาล้วน (เช่น this-is-what-revenge ตอน 31) — แอป auto-skip 5 ตอนแล้วขึ้นปุ่มเปิดต้นทางตามเดิม
